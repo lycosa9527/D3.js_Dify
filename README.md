@@ -13,16 +13,20 @@
 
 ### ✨ Key Features
 
-- **🤖 AI-Powered**: Uses AI to understand your requests and generate appropriate chart types
-- **🧠 Educational Focus**: Specializes in Thinking Maps® and educational diagram generation
-- **🏗️ Agent Architecture**: Advanced multi-agent system with 6 specialized agents for intelligent diagram generation
-- **📊 Multiple Chart Types**: Supports Thinking Maps® (Bubble Maps, Circle Maps, Double Bubble Maps, Bridge Maps), concept maps, mind maps, and traditional charts
-- **🌐 Interactive**: Fully interactive D3.js visualizations with hover effects, animations, and zoom
-- **🎨 Beautiful Design**: Modern, responsive UI with customizable themes
-- **📱 Export Options**: Export charts as PNG images or interactive HTML
-- **🌍 Multi-language**: Supports both English and Chinese
-- **⚡ Real-time**: Instant chart generation with live preview
-- **🎯 Dynamic Layout**: Advanced brace map agent with flexible, content-aware positioning
+- **🤖 AI-Powered**: Understands natural language and selects the best diagram type automatically
+- **🏗️ Multi-Agent Architecture**: 6 specialized agents (Qwen, DeepSeek, Brace Map, Flow Map, Multi-Flow Map, Tree Map) working together
+- **🌳 Tree Map Enhancements (v2.3.7)**:
+  - Rectangle nodes for branches and children
+  - Width-adaptive nodes using precise SVG text measurement
+  - Vertical stacking with straight connectors (branch → child → child)
+  - Auto-sizing canvas that expands to fit content
+- **🧠 Educational Focus**: Complete Thinking Maps® coverage (Bubble, Circle, Double Bubble, Brace, Flow, Multi-Flow, Bridge)
+- **📊 More Diagrams**: Concept maps, mind maps, and traditional charts
+- **🎨 Theming**: Modern themes via centralized style manager; easy color and typography overrides
+- **🌐 Interactive**: Smooth D3.js interactions (hover, zoom/pan) and instant style updates
+- **📱 Export Options**: PNG export and shareable interactive HTML
+- **🌍 Multi-language**: English and Chinese support
+- **⚡ Real-time**: Instant preview and fast PNG generation
 
 ## 🚀 Quick Start
 
