@@ -16,11 +16,11 @@ version: '3.8'
 
 services:
   # Main MindGraph application service
-      mindgraph:
+  mindgraph:
     build: 
       context: ..
       dockerfile: docker/Dockerfile
-          container_name: mindgraph
+    container_name: mindgraph
     ports:
       # Expose the main application port
       - "9527:9527"
