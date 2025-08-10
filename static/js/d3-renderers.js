@@ -1035,155 +1035,542 @@ function renderTreeMap(spec, theme = null, dimensions = null) {
 function renderConceptMap(spec, theme = null, dimensions = null) {
     d3.select('#d3-container').html('');
     
-    // Validate spec
     if (!spec || !spec.topic || !Array.isArray(spec.concepts) || !Array.isArray(spec.relationships)) {
         d3.select('#d3-container').append('div').style('color', 'red').text('Invalid spec for concept map');
         return;
     }
     
-    // Use provided theme and dimensions or defaults
-    const baseWidth = dimensions?.baseWidth || 800;
-    const baseHeight = dimensions?.baseHeight || 600;
-    const padding = dimensions?.padding || 40;
+    const baseWidth = dimensions?.baseWidth || 1600;
+    const baseHeight = dimensions?.baseHeight || 1000;
+    const padding = dimensions?.padding || 80;
     
-    // Get complete theme using robust style manager
+    console.log('D3.js renderConceptMap starting dimensions:', {
+        received: dimensions,
+        using: {width: baseWidth, height: baseHeight, padding: padding}
+    });
+    
+    // Check for configurable padding from spec
+    const earlyConfig = spec._config || {};
+    const configPadding = earlyConfig.canvasPadding || padding;
+
     let THEME;
     try {
         if (typeof styleManager !== 'undefined' && styleManager.getTheme) {
             THEME = styleManager.getTheme('concept_map', theme, theme);
         } else {
-            console.warn('Style manager not available, using fallback theme');
             THEME = {
-                nodeFill: '#e3f2fd',
-                nodeText: '#000000',
-                nodeStroke: '#35506b',
-                linkStroke: '#cccccc',
-                fontNode: '16px Inter, sans-serif',
+                topicFill: '#e3f2fd',
+                topicText: '#000',
+                topicStroke: '#35506b',
+                topicStrokeWidth: 2,
+                conceptFill: '#e3f2fd',
+                conceptText: '#333',
+                conceptStroke: '#4e79a7',
+                conceptStrokeWidth: 2,
+                relationshipColor: '#666',
+                relationshipStrokeWidth: 2,
+                fontTopic: 26,
+                fontConcept: 22,
                 background: '#ffffff'
             };
         }
-    } catch (error) {
-        console.error('Error getting theme from style manager:', error);
+    } catch (e) {
         THEME = {
-            nodeFill: '#e3f2fd',
-            nodeText: '#000000',
-            nodeStroke: '#35506b',
-            linkStroke: '#cccccc',
-            fontNode: '16px Inter, sans-serif',
+            topicFill: '#e3f2fd',
+            topicText: '#000',
+            topicStroke: '#35506b',
+            topicStrokeWidth: 2,
+            conceptFill: '#e3f2fd',
+            conceptText: '#333',
+            conceptStroke: '#4e79a7',
+            conceptStrokeWidth: 2,
+            relationshipColor: '#666',
+            relationshipStrokeWidth: 2,
+            fontTopic: 18,
+            fontConcept: 14,
             background: '#ffffff'
         };
     }
     
-    // Apply background if specified
     if (theme && theme.background) {
         d3.select('#d3-container').style('background-color', theme.background);
     }
     
-    const width = baseWidth;
-    const height = baseHeight;
-    var svg = d3.select('#d3-container').append('svg').attr('width', width).attr('height', height);
+    // If layout positions are normalized and include extents, we'll size after computing positions.
+    let width = baseWidth;
+    let height = baseHeight;
     
-    // Calculate layout - arrange concepts in a circle around the topic
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const topicRadius = getTextRadius(spec.topic, THEME.fontTopic, 20);
-    const conceptRadius = 60; // Distance from center for concepts
+    // Use backend adaptive sizing - disable conflicting D3.js expansion
+    // The backend already calculates optimal canvas size based on SVG elements
+    // This old logic was creating oversized canvases that override backend calculations
     
-    // Draw central topic
-    svg.append('circle')
-        .attr('cx', centerX)
-        .attr('cy', centerY)
-        .attr('r', topicRadius)
-        .attr('fill', THEME.topicFill)
-        .attr('stroke', THEME.topicStroke)
-        .attr('stroke-width', THEME.topicStrokeWidth);
-    
-    svg.append('text')
-        .attr('x', centerX)
-        .attr('y', centerY)
+    const svg = d3.select('#d3-container').append('svg').attr('width', width).attr('height', height);
+
+    // Arrowhead marker for directed relationships
+    const defs = svg.append('defs');
+    defs.append('marker')
+        .attr('id', 'arrowhead')
+        .attr('viewBox', '0 0 10 8')
+        .attr('refX', 9)
+        .attr('refY', 4)
+        .attr('markerWidth', 10)
+        .attr('markerHeight', 8)
+        .attr('orient', 'auto')
+        .append('path')
+        .attr('d', 'M 0 0 L 10 4 L 0 8 z')
+        .attr('fill', THEME.relationshipColor);
+
+    // Helpers for text wrapping and box measurement
+    function measureLineWidth(text, fontSize) {
+        const container = getMeasurementContainer();
+        const t = container.append('svg').append('text').attr('font-size', fontSize).text(text);
+        const w = t.node().getBBox().width;
+        t.remove();
+        return w;
+    }
+
+    function wrapIntoLines(text, fontSize, maxWidth) {
+        const words = String(text).split(/\s+/);
+        const lines = [];
+        let current = '';
+        for (const w of words) {
+            const candidate = current ? current + ' ' + w : w;
+            if (measureLineWidth(candidate, fontSize) <= maxWidth || current === '') {
+                current = candidate;
+            } else {
+                lines.push(current);
+                current = w;
+            }
+        }
+        if (current) lines.push(current);
+        return lines;
+    }
+
+    function drawBox(x, y, text, isTopic = false) {
+        const fontSize = isTopic ? THEME.fontTopic : THEME.fontConcept;
+        const maxTextWidth = isTopic ? 350 : 300;
+        const lines = wrapIntoLines(text, fontSize, maxTextWidth);
+        const lineHeight = Math.round(fontSize * 1.2);
+        const textWidth = Math.max(...lines.map(l => measureLineWidth(l, fontSize)), 20);
+        const paddingX = 16;
+        const paddingY = 10;
+        const boxW = Math.ceil(textWidth + paddingX * 2);
+        const boxH = Math.ceil(lines.length * lineHeight + paddingY * 2);
+
+        const group = svg.append('g');
+        group.append('rect')
+            .attr('x', x - boxW / 2)
+            .attr('y', y - boxH / 2)
+            .attr('rx', 8)
+            .attr('ry', 8)
+            .attr('width', boxW)
+            .attr('height', boxH)
+            .attr('fill', isTopic ? THEME.topicFill : THEME.conceptFill)
+            .attr('stroke', isTopic ? THEME.topicStroke : THEME.conceptStroke)
+            .attr('stroke-width', isTopic ? THEME.topicStrokeWidth : THEME.conceptStrokeWidth);
+
+        const textEl = group.append('text')
+            .attr('x', x)
+            .attr('y', y - (lines.length - 1) * lineHeight / 2)
         .attr('text-anchor', 'middle')
         .attr('dominant-baseline', 'middle')
-        .attr('fill', THEME.topicText)
-        .attr('font-size', THEME.fontTopic)
-        .attr('font-weight', 'bold')
-        .text(spec.topic);
-    
-    // Position concepts in a circle
-    const conceptPositions = [];
-    const angleStep = (2 * Math.PI) / spec.concepts.length;
-    
-    spec.concepts.forEach((concept, i) => {
-        const angle = i * angleStep;
-        const x = centerX + conceptRadius * Math.cos(angle);
-        const y = centerY + conceptRadius * Math.sin(angle);
-        conceptPositions.push({ concept, x, y });
-        
-        const nodeRadius = getTextRadius(concept, THEME.fontConcept, 15);
-        
-        // Draw concept node
-        svg.append('circle')
-            .attr('cx', x)
-            .attr('cy', y)
-            .attr('r', nodeRadius)
-            .attr('fill', THEME.conceptFill)
-            .attr('stroke', THEME.conceptStroke)
-            .attr('stroke-width', THEME.conceptStrokeWidth);
-        
-        svg.append('text')
+            .attr('fill', isTopic ? THEME.topicText : THEME.conceptText)
+            .attr('font-size', fontSize)
+            .attr('font-weight', isTopic ? '600' : '400');
+        lines.forEach((ln, i) => {
+            textEl.append('tspan').attr('x', x).attr('dy', i === 0 ? 0 : lineHeight).text(ln);
+        });
+
+        return { x, y, width: boxW, height: boxH, group };
+    }
+
+    function measureBox(text, isTopic = false) {
+        const fontSize = isTopic ? THEME.fontTopic : THEME.fontConcept;
+        const maxTextWidth = isTopic ? 350 : 300;
+        const lines = wrapIntoLines(text, fontSize, maxTextWidth);
+        const lineHeight = Math.round(fontSize * 1.2);
+        const textWidth = Math.max(...lines.map(l => measureLineWidth(l, fontSize)), 20);
+        const paddingX = 16;
+        const paddingY = 10;
+        const boxW = Math.ceil(textWidth + paddingX * 2);
+        const boxH = Math.ceil(lines.length * lineHeight + paddingY * 2);
+        const radius = Math.ceil(Math.sqrt(boxW * boxW + boxH * boxH) / 2);
+        return { width: boxW, height: boxH, radius };
+    }
+
+    function rectBorderPoint(rect, targetX, targetY) {
+        const halfW = rect.width / 2;
+        const halfH = rect.height / 2;
+        const dx = targetX - rect.x;
+        const dy = targetY - rect.y;
+        if (dx === 0 && dy === 0) return { x: rect.x, y: rect.y };
+        const absDx = Math.abs(dx);
+        const absDy = Math.abs(dy);
+        const scaleX = halfW / absDx;
+        const scaleY = halfH / absDy;
+        if (scaleX < scaleY) {
+            const x = rect.x + Math.sign(dx) * halfW;
+            const y = rect.y + dy * scaleX;
+            return { x, y };
+        } else {
+            const y = rect.y + Math.sign(dy) * halfH;
+            const x = rect.x + dx * scaleY;
+            return { x, y };
+        }
+    }
+
+    function drawEdgeLabel(x, y, text, fontSize, color) {
+        const paddingX = 4;
+        const paddingY = 2;
+        const group = svg.append('g');
+        const label = group.append('text')
             .attr('x', x)
             .attr('y', y)
             .attr('text-anchor', 'middle')
             .attr('dominant-baseline', 'middle')
-            .attr('fill', THEME.conceptText)
-            .attr('font-size', THEME.fontConcept)
-            .text(concept);
-    });
-    
-    // Draw relationships
-    spec.relationships.forEach(rel => {
-        const fromNode = conceptPositions.find(p => p.concept === rel.from);
-        const toNode = conceptPositions.find(p => p.concept === rel.to);
-        
-        if (fromNode && toNode) {
-            // Calculate line positions
-            const dx = toNode.x - fromNode.x;
-            const dy = toNode.y - fromNode.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            
-            const fromRadius = getTextRadius(rel.from, THEME.fontConcept, 15);
-            const toRadius = getTextRadius(rel.to, THEME.fontConcept, 15);
-            
-            const lineStartX = fromNode.x + (dx / dist) * fromRadius;
-            const lineStartY = fromNode.y + (dy / dist) * fromRadius;
-            const lineEndX = toNode.x - (dx / dist) * toRadius;
-            const lineEndY = toNode.y - (dy / dist) * toRadius;
-            
-            // Draw relationship line
-            svg.append('line')
-                .attr('x1', lineStartX)
-                .attr('y1', lineStartY)
-                .attr('x2', lineEndX)
-                .attr('y2', lineEndY)
-                .attr('stroke', THEME.relationshipColor)
-                .attr('stroke-width', THEME.relationshipStrokeWidth);
-            
-            // Draw relationship label
-            const midX = (lineStartX + lineEndX) / 2;
-            const midY = (lineStartY + lineEndY) / 2;
-            
-            svg.append('text')
-                .attr('x', midX)
-                .attr('y', midY - 5)
-                .attr('text-anchor', 'middle')
-                .attr('dominant-baseline', 'middle')
-                .attr('fill', THEME.relationshipColor)
-                .attr('font-size', THEME.fontRelationship)
-                .attr('font-style', 'italic')
-                .text(rel.label);
+            .attr('fill', color)
+            .attr('font-size', fontSize)
+            .style('font-style', 'italic')
+            .text(text || '');
+        try {
+            const bbox = label.node().getBBox();
+            group.insert('rect', 'text')
+                .attr('x', bbox.x - paddingX)
+                .attr('y', bbox.y - paddingY)
+                .attr('width', bbox.width + 2 * paddingX)
+                .attr('height', bbox.height + 2 * paddingY)
+                .attr('rx', 3)
+                .attr('ry', 3)
+                .attr('fill', '#ffffff')
+                .attr('fill-opacity', 0.9);
+        } catch (e) {
+            // If bbox fails, fallback to stroke halo
+            label
+                .style('paint-order', 'stroke')
+                .style('stroke', '#ffffff')
+                .style('stroke-width', '3px');
         }
-    });
+    }
+
+    function measureLabelBox(text, fontSize) {
+        const paddingX = 4;
+        const paddingY = 2;
+        const width = measureLineWidth(text || '', fontSize) + 2 * paddingX;
+        const height = Math.round(fontSize * 1.2) + 2 * paddingY;
+        return { width, height };
+    }
+
+    function rectsOverlap(a, b) {
+        // a, b: {x, y, width, height} centered at a.x,a.y
+        const ax1 = a.x - a.width / 2; const ax2 = a.x + a.width / 2;
+        const ay1 = a.y - a.height / 2; const ay2 = a.y + a.height / 2;
+        const bx1 = b.x - b.width / 2; const bx2 = b.x + b.width / 2;
+        const by1 = b.y - b.height / 2; const by2 = b.y + b.height / 2;
+        return !(ax2 < bx1 || ax1 > bx2 || ay2 < by1 || ay1 > by2);
+    }
+
+    function findNonOverlappingLabelPosition(midX, midY, nx, ny, tx, ty, labelW, labelH, nodeRects, placedRects) {
+        const attempts = [];
+        const distances = [0, 10, 20, 30, 40, 50, 60];
+        for (const d of distances) {
+            attempts.push({ x: midX + nx * d, y: midY + ny * d });  // along normal
+            attempts.push({ x: midX - nx * d, y: midY - ny * d });  // opposite normal
+            attempts.push({ x: midX + tx * d, y: midY + ty * d });  // along tangent
+            attempts.push({ x: midX - tx * d, y: midY - ty * d });  // opposite tangent
+            // small diagonal mixes
+            attempts.push({ x: midX + (nx + tx) * d * 0.7, y: midY + (ny + ty) * d * 0.7 });
+            attempts.push({ x: midX + (nx - tx) * d * 0.7, y: midY + (ny - ty) * d * 0.7 });
+        }
+        for (const p of attempts) {
+            const candidate = { x: p.x, y: p.y, width: labelW, height: labelH };
+            let overlaps = false;
+            for (const nr of nodeRects) {
+                if (rectsOverlap(candidate, nr)) { overlaps = true; break; }
+            }
+            if (overlaps) continue;
+            for (const pr of placedRects) {
+                if (rectsOverlap(candidate, pr)) { overlaps = true; break; }
+            }
+            if (!overlaps) return { x: p.x, y: p.y };
+        }
+        return { x: midX, y: midY }; // fallback
+    }
+
+    const centerX = width / 2;
+    const centerY = height / 2;
     
-    // Watermark
+    // Always ensure topic is at canvas center
+    let topicBox = drawBox(centerX, centerY, spec.topic, true);
+
+    // Read layout and parameters
+    const layout = spec._layout || {};
+    const params = layout.params || {};
+    const baseRingRadius = Math.max(180, params.ringRadius || 220);
+    const ringGap = Math.max(80, params.ringGap || 120);
+    const angleOffset = params.angleOffset || 0;
+    const ringsMap = layout.rings || {};
+    const angleHints = layout.angleHints || {};
+    const positions = layout.positions || {};
+    const edgeCurvatures = layout.edgeCurvatures || {};
+
+    // Determine whether we have normalized positions from agent (in [-1,1])
+    function isNormalized(p) {
+        if (typeof p.x !== 'number' || typeof p.y !== 'number') return false;
+        // Allow maximum range for ultimate node spacing
+        return p.x <= 10.0 && p.x >= -10.0 && p.y <= 10.0 && p.y >= -10.0;
+    }
+
+    function toCanvas(p) {
+        if (isNormalized(p)) {
+            // Use scaling that handles maximum coordinate ranges for ultimate spacing
+            const scaleX = (width - 2 * configPadding) / 12;  // Adjusted divisor for maximum coordinate range (was 8)
+            const scaleY = (height - 2 * configPadding) / 12; // Adjusted divisor for maximum coordinate range (was 8)
+            const px = centerX + (p.x * scaleX);
+            const py = centerY + (p.y * scaleY);
+            return { x: px, y: py };
+        }
+        return p;
+    }
+
+    // Sector-only: always use positions from agent (sectors). If missing, compute simple sector positions.
+    let useSectors = (positions && Object.keys(positions).length > 0);
+    const nodes = {};
+
+    if (!useSectors) {
+        // Compute simple sector positions on the fly if agent did not provide them
+        const N = Math.max(1, spec.concepts.length);
+        const keys = spec.concepts.slice(0, Math.min(6, N));
+        const sectorSpan = (2 * Math.PI) / Math.max(1, keys.length);
+        const innerR = 0.35, minR = 0.55, maxR = 0.9, gap = 0.8;
+        const pos = { [spec.topic]: { x: 0, y: 0 } };
+        keys.forEach((k, i) => {
+            const ang = -Math.PI / 2 + i * sectorSpan;
+            pos[k] = { x: innerR * Math.cos(ang), y: innerR * Math.sin(ang) };
+        });
+        let idx = 0;
+        spec.concepts.forEach(c => {
+            if (keys.includes(c)) return;
+            const i = idx % Math.max(1, keys.length);
+            const centerAng = -Math.PI / 2 + i * sectorSpan;
+            const half = (sectorSpan * gap) / 2;
+            const t = ((idx / keys.length) % 1);
+            const ang = centerAng - half + t * (2 * half);
+            const rad = minR + ((idx % 3) * ((maxR - minR) / 3));
+            pos[c] = { x: rad * Math.cos(ang), y: rad * Math.sin(ang) };
+            idx++;
+        });
+        positions = pos;
+        useSectors = true;
+    }
+
+    // Sector layout drawing - use consistent coordinate transformation
+    const toCanvasScale = (p) => {
+        // Use same scaling logic as the main toCanvas function for consistency
+        const scaleX = (width - 2 * configPadding) / 12;  // Adjusted divisor for maximum coordinate range (was 8)
+        const scaleY = (height - 2 * configPadding) / 12; // Adjusted divisor for maximum coordinate range (was 8)
+        const px = centerX + (p.x * scaleX);
+        const py = centerY + (p.y * scaleY);
+        return { x: px, y: py };
+    };
+    // Always pin topic at canvas center for sector layout
+    const tp = { x: centerX, y: centerY };
+    topicBox = drawBox(tp.x, tp.y, spec.topic, true);
+    // Apply optional node spacing scale from agent or config
+    const config = spec._config || {};
+    let spacingScale = typeof params.nodeSpacing === 'number' ? Math.max(0.8, Math.min(2.0, params.nodeSpacing)) : 
+                       typeof config.nodeSpacing === 'number' ? Math.max(0.8, Math.min(2.0, config.nodeSpacing)) : 1.0;
+    
+    // For force-directed layouts, increase spacing even more
+    if (layout.algorithm === 'force_directed') {
+        spacingScale = Math.max(spacingScale, 1.8); // Minimum 1.8x spacing for network layouts
+    }
+    spec.concepts.forEach(c => {
+        const p = positions[c] || { x: 0, y: 0 };
+        // scale normalized vector away from center to increase spacing
+        const scaled = { x: p.x * spacingScale, y: p.y * spacingScale };
+        const pc = toCanvasScale(scaled);
+        nodes[c] = { label: c, box: drawBox(pc.x, pc.y, c, false) };
+    });
+
+    // Nudge pass: resolve rectangle overlaps between nodes
+    (function nudgeNodeOverlaps() {
+        const entries = [
+            { key: '__topic__', fixed: true, box: topicBox },
+            ...Object.values(nodes).map(n => ({ key: n.label, fixed: false, box: n.box }))
+        ];
+        // Extra spacing between boxes - more for force-directed layouts
+        let margin = 6;
+        if (layout.algorithm === 'force_directed') {
+            margin = 12; // Double spacing for network layouts
+        }
+        const maxIter = 16;
+        for (let iter = 0; iter < maxIter; iter++) {
+            let moved = false;
+            for (let i = 0; i < entries.length; i++) {
+                for (let j = i + 1; j < entries.length; j++) {
+                    const a = entries[i].box; const b = entries[j].box;
+                    const halfWsum = (a.width + b.width) / 2 + margin;
+                    const halfHsum = (a.height + b.height) / 2 + margin;
+                    const dx = b.x - a.x; const dy = b.y - a.y;
+                    const overlapX = halfWsum - Math.abs(dx);
+                    const overlapY = halfHsum - Math.abs(dy);
+                    if (overlapX > 0 && overlapY > 0) {
+                        // minimal translation to separate: along axis with smaller overlap
+                        if (overlapX < overlapY) {
+                            const push = overlapX / 2 + 0.5;
+                            const dir = Math.sign(dx) || (Math.random() < 0.5 ? 1 : -1);
+                            if (!entries[i].fixed && !entries[j].fixed) {
+                                a.x -= dir * push;
+                                b.x += dir * push;
+                                moved = true;
+                            } else if (entries[i].fixed && !entries[j].fixed) {
+                                b.x += dir * (2 * push);
+                                moved = true;
+                            } else if (!entries[i].fixed && entries[j].fixed) {
+                                a.x -= dir * (2 * push);
+                                moved = true;
+                            }
+                        } else {
+                            const push = overlapY / 2 + 0.5;
+                            const dir = Math.sign(dy) || (Math.random() < 0.5 ? 1 : -1);
+                            if (!entries[i].fixed && !entries[j].fixed) {
+                                a.y -= dir * push;
+                                b.y += dir * push;
+                                moved = true;
+                            } else if (entries[i].fixed && !entries[j].fixed) {
+                                b.y += dir * (2 * push);
+                                moved = true;
+                            } else if (!entries[i].fixed && entries[j].fixed) {
+                                a.y -= dir * (2 * push);
+                                moved = true;
+                            }
+                        }
+                    }
+                }
+            }
+            if (!moved) break;
+        }
+        // Apply visual transforms for moved nodes
+        entries.forEach(entry => {
+            const b = entry.box;
+            if (b.group) {
+                // Compute current center of the group's content from first child
+                try {
+                    const rect = b.group.select('rect');
+                    const currentX = +rect.attr('x') + b.width / 2;
+                    const currentY = +rect.attr('y') + b.height / 2;
+                    const dx = b.x - currentX;
+                    const dy = b.y - currentY;
+                    if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
+                        const prev = b.group.attr('transform') || '';
+                        b.group.attr('transform', `${prev} translate(${dx},${dy})`);
+                    }
+                } catch (e) { /* ignore */ }
+            }
+        });
+    })();
+
+    // After placing nodes, center the topic in the canvas and size symmetrically around it
+    try {
+        const allBoxes = [topicBox, ...Object.values(nodes).map(n => n.box)];
+        const minX = Math.min(...allBoxes.map(b => b.x - b.width / 2));
+        const maxX = Math.max(...allBoxes.map(b => b.x + b.width / 2));
+        const minY = Math.min(...allBoxes.map(b => b.y - b.height / 2));
+        const maxY = Math.max(...allBoxes.map(b => b.y + b.height / 2));
+        const margin = 60;
+        const leftSpan = topicBox.x - minX;
+        const rightSpan = maxX - topicBox.x;
+        const topSpan = topicBox.y - minY;
+        const bottomSpan = maxY - topicBox.y;
+        const maxHoriz = Math.max(leftSpan, rightSpan);
+        const maxVert = Math.max(topSpan, bottomSpan);
+        const neededW = Math.ceil(maxHoriz * 2 + 2 * margin);
+        const neededH = Math.ceil(maxVert * 2 + 2 * margin);
+        if (neededW > 0 && neededH > 0) {
+            // Respect the adaptive canvas sizing - only expand if absolutely necessary
+            const minExpansion = 1.1; // Allow only 10% expansion beyond calculated size
+            const maxAllowedW = Math.ceil(width * minExpansion);
+            const maxAllowedH = Math.ceil(height * minExpansion);
+            
+            width = Math.min(Math.max(width, neededW), maxAllowedW);
+            height = Math.min(Math.max(height, neededH), maxAllowedH);
+            
+            console.log('D3.js expansion control:', {
+                original: {w: baseWidth, h: baseHeight},
+                needed: {w: neededW, h: neededH},
+                maxAllowed: {w: maxAllowedW, h: maxAllowedH},
+                final: {w: width, h: height}
+            });
+            
+            svg.attr('width', width).attr('height', height);
+            // Translate so that topic is at the geometric center
+            const dx = (width / 2) - topicBox.x;
+            const dy = (height / 2) - topicBox.y;
+            const g = svg.append('g').attr('class', 'cm-shift').attr('transform', `translate(${dx},${dy})`);
+            const existing = svg.selectAll('svg > *:not(defs):not(.cm-shift)').nodes();
+            existing.forEach(node => { g.node().appendChild(node); });
+            topicBox = { ...topicBox, x: topicBox.x + dx, y: topicBox.y + dy };
+            Object.keys(nodes).forEach(k => {
+                nodes[k].box = { ...nodes[k].box, x: nodes[k].box.x + dx, y: nodes[k].box.y + dy };
+            });
+        }
+    } catch (e) {
+        // Safe fallback if bbox sizing fails
+    }
+
+    // Prepare node rectangles for label overlap checks
+    const nodeRects = [
+        { x: topicBox.x, y: topicBox.y, width: topicBox.width, height: topicBox.height },
+        ...Object.values(nodes).map(n => ({ x: n.box.x, y: n.box.y, width: n.box.width, height: n.box.height }))
+    ];
+
+    // Draw relationships as curved, directed edges with labels
+    const fontRel = THEME.fontRelationship || Math.max(12, Math.round((THEME.fontConcept || 14) * 0.9));
+    const placedLabelRects = [];
+    spec.relationships.forEach((rel, idx) => {
+        const from = rel.from === spec.topic ? { label: spec.topic, box: topicBox } : nodes[rel.from];
+        const to = rel.to === spec.topic ? { label: spec.topic, box: topicBox } : nodes[rel.to];
+        if (!from || !to) return;
+
+        const start = rectBorderPoint(from.box, to.box.x, to.box.y);
+        const end = rectBorderPoint(to.box, from.box.x, from.box.y);
+
+        const mx = (start.x + end.x) / 2;
+        const my = (start.y + end.y) / 2;
+        const dx = end.x - start.x;
+        const dy = end.y - start.y;
+        const dist = Math.max(1, Math.hypot(dx, dy));
+        const nx = -dy / dist; // normal vector
+        const ny = dx / dist;
+        // Per-edge curvature hint to minimize overlaps
+        const curveHint = (edgeCurvatures[rel.from] ?? 0);
+        const curve = Math.min(100, Math.max(-100, curveHint)) || Math.min(80, 0.18 * dist);
+        const cx = mx + nx * curve;
+        const cy = my + ny * curve;
+
+        const pathId = `cm_edge_${idx}`;
+        svg.append('path')
+            .attr('id', pathId)
+            .attr('d', `M ${start.x},${start.y} Q ${cx},${cy} ${end.x},${end.y}`)
+            .attr('fill', 'none')
+            .attr('stroke', THEME.relationshipColor)
+            .attr('stroke-width', THEME.relationshipStrokeWidth)
+            .attr('marker-end', 'url(#arrowhead)');
+
+        // Place a horizontal label near the curve midpoint, offset along normal, avoid overlaps
+        const labelOffset = 12;
+        const midPreferredX = mx + nx * labelOffset;
+        const midPreferredY = my + ny * labelOffset;
+        const tLen = Math.max(1, Math.hypot(dx, dy));
+        const tx = dx / tLen; const ty = dy / tLen; // unit tangent
+        const size = measureLabelBox(rel.label || '', fontRel);
+        const pos = findNonOverlappingLabelPosition(
+            midPreferredX, midPreferredY, nx, ny, tx, ty, size.width, size.height, nodeRects, placedLabelRects
+        );
+        drawEdgeLabel(pos.x, pos.y, rel.label, fontRel, THEME.relationshipColor);
+        placedLabelRects.push({ x: pos.x, y: pos.y, width: size.width, height: size.height });
+    });
+
     addWatermark(svg, theme);
 }
 

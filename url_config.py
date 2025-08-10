@@ -5,7 +5,7 @@ MindGraph URL Configuration
 Centralized URL configuration for all endpoints in the MindGraph application.
 This ensures consistency and makes it easy to update URLs across the application.
 
-Version: 2.3.4
+Version: 2.3.8
 """
 
 # ============================================================================

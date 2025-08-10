@@ -1,5 +1,5 @@
 # MindGraph - AI-Powered Graph Generation Application
-# Version: 2.3.4
+# Version: 2.3.8
 # 
 # Features:
 # - AI-powered graph generation with Qwen and DeepSeek LLMs

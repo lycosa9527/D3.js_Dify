@@ -5,6 +5,22 @@ All notable changes to the MindGraph project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.8] - 2025-08-10
+
+### 🎯 Enhanced: Concept Map Spacing and Text Improvements
+
+- **Optimized Node Spacing**: Dramatically improved radial layout with larger starting radius (1.8+ base), increased radius increments (up to 1.2), and better layer separation for maximum visual clarity.
+- **Enhanced Text Readability**: Increased font sizes to 26px/22px (topic/concept) with improved text wrapping at 350px/300px for better readability across all devices.
+- **Improved Coordinate System**: Expanded D3.js coordinate support to ±10.0 range with optimized scaling (/12 divisor) for better canvas utilization while maintaining responsive design.
+- **Advanced Spacing Configuration**: Updated global spacing multiplier to 4.0, minimum node distance to 320px, and canvas padding to 140px for professional appearance.
+- **User Memory Integration**: Added memory system to track user preferences for concept map spacing and layout improvements.
+
+### 🧹 Project Cleanup
+
+- **Root Directory**: Removed temporary analysis files (clustering_analysis.json, clustering_diagnosis.json, intelligent_pizza_test.json, stacking_diagnosis.json).
+- **Python Cache**: Cleaned up __pycache__ directories across the project structure.
+- **Version Updates**: Updated all inline comments and documentation to version 2.3.8 for consistency.
+
 ## [2.3.7] - 2025-08-09
 
 ### 🌳 New: Tree Map Agent and Renderer Enhancements

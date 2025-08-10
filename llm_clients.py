@@ -129,4 +129,24 @@ try:
 except Exception as e:
     logger.warning(f"Failed to initialize LLM clients: {e}")
     deepseek_client = None
-    qwen_client = None 
+    qwen_client = None
+
+def get_llm_client():
+    """Get an available LLM client for testing purposes."""
+    # For testing, return a mock client if real clients aren't available
+    if deepseek_client:
+        return deepseek_client
+    elif qwen_client:
+        return qwen_client
+    else:
+        # Return a mock client for testing
+        class MockLLMClient:
+            def get_response(self, prompt):
+                # Mock response for testing
+                if "concepts" in prompt.lower():
+                    return '{"topic": "Test Topic", "concepts": ["Concept 1", "Concept 2", "Concept 3"]}'
+                elif "relationships" in prompt.lower():
+                    return '{"relationships": [{"from": "Concept 1", "to": "Concept 2", "label": "relates to"}]}'
+                else:
+                    return '{"result": "mock response"}'
+        return MockLLMClient() 

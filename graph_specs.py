@@ -320,8 +320,8 @@ def validate_concept_map(spec: Dict) -> Tuple[bool, str]:
     if not is_valid:
         return False, error
     
-    # Validate concepts list
-    is_valid, error = validate_list_field(spec, "concepts", max_items=15)
+    # Validate concepts list (allow richer maps)
+    is_valid, error = validate_list_field(spec, "concepts", max_items=30)
     if not is_valid:
         return False, error
     

@@ -218,18 +218,7 @@ def generate_graph():
         topics = result.get('topics', [])
         style_preferences = result.get('style_preferences', {})
         
-        # Validate the generated spec
-        from graph_specs import DIAGRAM_VALIDATORS
-        if diagram_type in DIAGRAM_VALIDATORS:
-            validate_fn = DIAGRAM_VALIDATORS[diagram_type]
-            valid, msg = validate_fn(spec)
-            if not valid:
-                logger.warning(f"Generated invalid spec for {diagram_type}: {msg}")
-                return jsonify({'error': f'Failed to generate valid graph specification: {msg}'}), 400
-        else:
-            logger.warning(f"No validator found for diagram type: {diagram_type}")
-        
-        # Optionally enhance spec using specialized agents
+        # Optionally enhance spec using specialized agents FIRST
         if diagram_type == 'multi_flow_map':
             try:
                 from multi_flow_map_agent import MultiFlowMapAgent
@@ -263,11 +252,35 @@ def generate_graph():
                     logger.warning(f"TreeMapAgent enhancement skipped: {agent_result.get('error')}")
             except Exception as e:
                 logger.error(f"Error enhancing tree_map spec: {e}")
+        elif diagram_type == 'concept_map':
+            try:
+                from concept_map_agent import ConceptMapAgent
+                c_agent = ConceptMapAgent()
+                agent_result = c_agent.enhance_spec(spec)
+                if agent_result.get('success') and 'spec' in agent_result:
+                    spec = agent_result['spec']
+                else:
+                    logger.warning(f"ConceptMapAgent enhancement skipped: {agent_result.get('error')}")
+            except Exception as e:
+                logger.error(f"Error enhancing concept_map spec: {e}")
+
+        # NOW validate the enhanced spec (after agent enhancement)
+        from graph_specs import DIAGRAM_VALIDATORS
+        if isinstance(spec, dict) and spec.get('error'):
+            return jsonify({'error': spec.get('error')}), 400
+        if diagram_type in DIAGRAM_VALIDATORS:
+            validate_fn = DIAGRAM_VALIDATORS[diagram_type]
+            valid, msg = validate_fn(spec)
+            if not valid:
+                logger.warning(f"Generated invalid spec for {diagram_type}: {msg}")
+                return jsonify({'error': f'Failed to generate valid graph specification: {msg}'}), 400
+        else:
+            logger.warning(f"No validator found for diagram type: {diagram_type}")
 
         # Calculate optimized dimensions
         dimensions = config.get_d3_dimensions()
         # Use agent-recommended dimensions if provided
-        if diagram_type in ('multi_flow_map', 'flow_map', 'tree_map') and isinstance(spec, dict) and spec.get('_recommended_dimensions'):
+        if diagram_type in ('multi_flow_map', 'flow_map', 'tree_map', 'concept_map') and isinstance(spec, dict) and spec.get('_recommended_dimensions'):
             rd = spec['_recommended_dimensions']
             try:
                 dimensions = {
@@ -276,8 +289,8 @@ def generate_graph():
                     'padding': rd.get('padding', dimensions.get('padding', 40)),
                     'width': rd.get('width', rd.get('baseWidth', dimensions.get('baseWidth', 900))),
                     'height': rd.get('height', rd.get('baseHeight', dimensions.get('baseHeight', 500))),
-                    'topicFontSize': dimensions.get('topicFontSize', 18),
-                    'charFontSize': dimensions.get('charFontSize', 14)
+                    'topicFontSize': dimensions.get('topicFontSize', 26),
+                    'charFontSize': dimensions.get('charFontSize', 22)
                 }
             except Exception as e:
                 logger.warning(f"Failed to apply recommended dimensions: {e}")
@@ -357,6 +370,9 @@ def generate_png():
     
     # Validate the generated spec before processing
     from graph_specs import DIAGRAM_VALIDATORS
+    # Surface generation error without changing type
+    if isinstance(spec, dict) and spec.get('error'):
+        return jsonify({'error': spec.get('error')}), 400
     if graph_type in DIAGRAM_VALIDATORS:
         validate_fn = DIAGRAM_VALIDATORS[graph_type]
         valid, msg = validate_fn(spec)
@@ -417,6 +433,18 @@ def generate_png():
                 logger.warning(f"TreeMapAgent enhancement skipped: {agent_result.get('error')}")
         except Exception as e:
             logger.error(f"Error enhancing tree_map spec: {e}")
+    elif graph_type == 'concept_map':
+        # Enhance concept map spec for quality and sizing
+        try:
+            from concept_map_agent import ConceptMapAgent
+            c_agent = ConceptMapAgent()
+            agent_result = c_agent.enhance_spec(spec)
+            if agent_result.get('success') and 'spec' in agent_result:
+                spec = agent_result['spec']
+            else:
+                logger.warning(f"ConceptMapAgent enhancement skipped: {agent_result.get('error')}")
+        except Exception as e:
+            logger.error(f"Error enhancing concept_map spec: {e}")
     
     # Check if spec has required structure for rendering
     if not spec or isinstance(spec, dict) and spec.get('error'):
@@ -469,8 +497,8 @@ def generate_png():
                     'padding': min_padding,
                     'width': optimal_width,
                     'height': optimal_height,
-                    'topicFontSize': dimensions.get('topicFontSize', 18),
-                    'charFontSize': dimensions.get('charFontSize', 14)
+                    'topicFontSize': dimensions.get('topicFontSize', 26),
+                    'charFontSize': dimensions.get('charFontSize', 22)
                 }
             elif graph_type == 'brace_map' and spec and spec.get('success') and 'svg_data' in spec:
                 # Use agent's optimal dimensions for brace maps
@@ -501,7 +529,7 @@ def generate_png():
                         'subpartFontSize': dimensions.get('subpartFontSize', 14)
                     }
                     logger.warning("Agent dimensions not available, using fallback dimensions")
-            elif graph_type in ('multi_flow_map', 'flow_map', 'tree_map') and isinstance(spec, dict):
+            elif graph_type in ('multi_flow_map', 'flow_map', 'tree_map', 'concept_map') and isinstance(spec, dict):
                 try:
                     rd = spec.get('_recommended_dimensions') or {}
                     if rd:
