@@ -138,10 +138,55 @@ class FlowMapAgent:
                 max_step_w = max(max_step_w, w)
                 total_steps_h += h
 
-            total_vertical_spacing = max(0, len(normalized_steps) - 1) * step_spacing
+            # Calculate adaptive spacing for each step based on substeps
+            total_vertical_spacing = 0
+            if len(normalized_steps) > 1:
+                for i in range(len(normalized_steps) - 1):
+                    current_step = normalized_steps[i]
+                    next_step = normalized_steps[i + 1]
+                    
+                    # Estimate substep heights
+                    current_substeps = step_to_substeps.get(current_step, [])
+                    next_substeps = step_to_substeps.get(next_step, [])
+                    
+                    # Each substep needs height + spacing
+                    current_sub_height = len(current_substeps) * (font_step * 1.2 + vpad_step * 2 + 30)  # 30 = sub spacing
+                    next_sub_height = len(next_substeps) * (font_step * 1.2 + vpad_step * 2 + 30)
+                    
+                    # More efficient spacing calculation (matching D3.js)
+                    max_sub_height = max(current_sub_height, next_sub_height)
+                    min_base_spacing = 45  # Matches D3.js minBaseSpacing
+                    adaptive_spacing = max(min_base_spacing, max_sub_height * 0.4 + 20) if max_sub_height > 0 else min_base_spacing
+                    
+                    total_vertical_spacing += adaptive_spacing
 
-            # Compute required canvas strictly from content
-            width = max(title_w, max_step_w) + padding * 2
+            # Estimate substep space requirements
+            max_substep_w = 0
+            has_substeps = False
+            for step in normalized_steps:
+                substeps = step_to_substeps.get(step, [])
+                if substeps:
+                    has_substeps = True
+                    for substep in substeps:
+                        s_w_raw, _ = estimate_text_size(substep, font_step)
+                        substep_w = s_w_raw + hpad_step * 2
+                        max_substep_w = max(max_substep_w, substep_w)
+            
+            # Compute required canvas width accounting for substeps
+            base_content_width = max(title_w, max_step_w)
+            extra_padding = 20  # Additional safety margin for text rendering (matches D3.js)
+            if has_substeps:
+                # Add space for substeps: gap + substep width
+                substep_gap = 40  # Gap between step and substeps
+                width = base_content_width + substep_gap + max_substep_w + padding * 2 + extra_padding
+            else:
+                width = base_content_width + padding * 2 + extra_padding
+            
+            # Ensure minimum readable width (reduced for better content fit)
+            min_width = 250  # Reduced minimum for better content-to-canvas ratio
+            width = max(width, min_width)
+            
+            # Height calculation remains the same
             height = padding + title_h + 30 + total_steps_h + total_vertical_spacing + padding
 
             enhanced_spec: Dict = {

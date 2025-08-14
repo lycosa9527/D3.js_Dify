@@ -84,14 +84,40 @@ class MultiFlowMapAgent:
             cause_importance = [score_importance(c) for c in causes]
             effect_importance = [score_importance(e) for e in effects]
 
-            # Recommend dimensions based on content density
+            # Calculate dimensions based on content complexity
             max_side = max(len(causes), len(effects))
-            base_width = 900
-            base_height = 500
-            width = base_width + max(0, (max_side - 4)) * 80
-            # Height grows with total items but is capped moderately
             total_items = len(causes) + len(effects)
-            height = base_height + max(0, (total_items - 8)) * 50
+            
+            # Estimate text width requirements (rough approximation)
+            max_cause_length = max((len(c) for c in causes), default=0)
+            max_effect_length = max((len(e) for e in effects), default=0)
+            max_text_length = max(max_cause_length, max_effect_length, len(event))
+            
+            # Dynamic width calculation based on content
+            # Base width accounts for: margins + side gaps + central event
+            base_width = 600  # Reduced base for better scaling
+            text_width_factor = max_text_length * 8  # Approximate pixels per character
+            width_for_sides = text_width_factor * 2 + 300  # Both sides + gaps
+            width = max(base_width, width_for_sides)
+            
+            # Dynamic height calculation (optimized for minimal excess space)
+            base_height = 300  # Smaller base height for better scaling
+            
+            # Realistic item height calculation with slight scaling for larger content
+            base_item_height = 35  # Base: ~16px text + 19px padding/spacing
+            # Add slight scaling for larger content to prevent overcrowding
+            scaling_factor = 1.0 + (max_side - 2) * 0.02  # 2% per item beyond 2
+            item_height_estimate = base_item_height * min(scaling_factor, 1.3)  # Cap at 30% increase
+            
+            event_and_margins = 140  # Central event (50px) + top/bottom margins (90px total)
+            height_for_content = max_side * item_height_estimate + event_and_margins
+            height = max(base_height, height_for_content)
+            
+            # Additional height for very long text (but more conservative)
+            if max_text_length > 50:
+                # Only add extra height for really long text that might wrap
+                extra_height = min(100, (max_text_length - 50) * 1.5)  # Much more conservative
+                height += extra_height
 
             enhanced_spec: Dict = {
                 "event": event,

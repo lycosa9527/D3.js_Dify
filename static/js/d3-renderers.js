@@ -2747,7 +2747,7 @@ function renderFlowMap(spec, theme = null, dimensions = null) {
 
     const THEME = {
         titleFill: '#4e79a7',
-        titleText: '#fff',
+        titleText: '#333',  // Changed from white to dark gray/black for better readability
         titleStroke: '#35506b',
         titleStrokeWidth: 3,
         stepFill: '#a7c7e7',
@@ -2824,7 +2824,7 @@ function renderFlowMap(spec, theme = null, dimensions = null) {
             }
         });
     }
-    const subSpacing = 12;
+    const subSpacing = 30; // Increased further to prevent overlap
     const subOffsetX = 40; // gap between step rect and substeps group
     const subNodesPerStep = stepSizes.map(stepObj => {
         const subs = stepToSubsteps[stepObj.text] || [];
@@ -2848,21 +2848,43 @@ function renderFlowMap(spec, theme = null, dimensions = null) {
     const maxStepWidth = stepSizes.reduce((mw, s) => Math.max(mw, s.w), 0);
     const maxSubGroupWidth = subGroupWidths.reduce((mw, w) => Math.max(mw, w), 0);
     const totalStepsHeight = stepSizes.reduce((sum, s) => sum + s.h, 0);
-    const totalVerticalSpacing = Math.max(0, stepSizes.length - 1) * THEME.stepSpacing;
+    
+    // Calculate adaptive spacing based on substep heights (simplified)
+    let totalVerticalSpacing = 0;
+    if (stepSizes.length > 1) {
+        for (let i = 0; i < stepSizes.length - 1; i++) {
+            const currentStepSubHeight = subGroupHeights[i] || 0;
+            const nextStepSubHeight = subGroupHeights[i + 1] || 0;
+            
+            // Use more efficient spacing calculation
+            const maxSubHeight = Math.max(currentStepSubHeight, nextStepSubHeight);
+            const minBaseSpacing = 45; // Reduced from 60
+            const adaptiveSpacing = maxSubHeight > 0 ? Math.max(minBaseSpacing, maxSubHeight * 0.4 + 20) : minBaseSpacing;
+            
+            totalVerticalSpacing += adaptiveSpacing;
+        }
+    }
 
-    // Required canvas based on content (include right-side substeps if present)
+    // Calculate initial width estimate (will be refined after substep positioning)
     const rightSideWidth = maxSubGroupWidth > 0 ? (subOffsetX + maxSubGroupWidth) : 0;
-    let requiredWidth = Math.max(titleSize.w, maxStepWidth + rightSideWidth) + padding * 2;
-    let requiredHeight = padding + (titleSize.h + THEME.vPadTitle) + 30 + totalStepsHeight + totalVerticalSpacing + padding;
-
-    const baseWidth = requiredWidth;
-    const baseHeight = requiredHeight;
+    const extraPadding = 20; // Additional safety margin for text rendering
+    const initialWidth = Math.max(titleSize.w, maxStepWidth + rightSideWidth) + padding * 2 + extraPadding;
+    
+    // Use agent recommendations as minimum for initial sizing
+    let baseWidth, baseHeight;
+    if (dimensions && dimensions.baseWidth && dimensions.baseHeight) {
+        baseWidth = Math.max(dimensions.baseWidth, initialWidth);
+        baseHeight = dimensions.baseHeight; // Will be updated after substep positioning
+    } else {
+        baseWidth = initialWidth;
+        baseHeight = 600; // Initial estimate, will be updated
+    }
 
     // Clean up temp svg (measurement SVG)
     tempSvg.remove();
 
     const centerX = baseWidth / 2;
-    const startY = padding + titleSize.h + THEME.vPadTitle + 40;
+    const startY = padding + titleSize.h + THEME.vPadTitle + 10; // Further reduced from 20 to 10
 
     // Size container to content to avoid external CSS constraining the SVG
     d3.select('#d3-container')
@@ -2887,13 +2909,64 @@ function renderFlowMap(spec, theme = null, dimensions = null) {
         .attr('font-weight', 'bold')
         .text(spec.title);
 
-    // Draw steps vertically with adaptive block sizes and record centers
-    let yCursor = startY;
+    // NEW APPROACH: Calculate all substep positions first, then position steps accordingly
+    
+    // Step 1: Calculate all substep node positions with perfect spacing
+    const allSubstepPositions = [];
+    let currentSubY = startY + 15; // Further reduced from 30 to 15
+    
+    for (let stepIdx = 0; stepIdx < stepSizes.length; stepIdx++) {
+        const nodes = subNodesPerStep[stepIdx];
+        const stepPositions = [];
+        
+        if (nodes.length > 0) {
+            // Position each substep with proper spacing
+            for (let nodeIdx = 0; nodeIdx < nodes.length; nodeIdx++) {
+                const node = nodes[nodeIdx];
+                stepPositions.push({
+                    x: centerX + stepSizes[stepIdx].w / 2 + subOffsetX,
+                    y: currentSubY,
+                    w: node.w,
+                    h: node.h,
+                    text: node.text
+                });
+                currentSubY += node.h + subSpacing; // Perfect spacing, no overlap
+            }
+            // Add gap between substep groups (reduced)
+            currentSubY += 10; // Reduced from 20 to 10
+        }
+        allSubstepPositions.push(stepPositions);
+    }
+    
+    // Step 2: Position main steps to align with their substep groups
     const stepCenters = [];
+    for (let stepIdx = 0; stepIdx < stepSizes.length; stepIdx++) {
+        const substepGroup = allSubstepPositions[stepIdx];
+        let stepYCenter;
+        
+        if (substepGroup.length > 0) {
+            // Center step on its substep group
+            const firstSubstepY = substepGroup[0].y;
+            const lastSubstepY = substepGroup[substepGroup.length - 1].y + substepGroup[substepGroup.length - 1].h;
+            stepYCenter = (firstSubstepY + lastSubstepY) / 2;
+        } else {
+            // No substeps - use sequential positioning with minimal spacing
+            if (stepIdx === 0) {
+                stepYCenter = startY + 15; // Further reduced from 30 to 15
+            } else {
+                // Position below previous step with minimum spacing
+                const prevStepBottom = stepCenters[stepIdx - 1] + stepSizes[stepIdx - 1].h / 2;
+                stepYCenter = prevStepBottom + 40 + stepSizes[stepIdx].h / 2; // Reduced from 60 to 40
+            }
+        }
+        
+        stepCenters.push(stepYCenter);
+    }
+    
+    // Step 3: Draw main steps at calculated positions
     stepSizes.forEach((s, index) => {
         const stepXCenter = centerX;
-        const stepYCenter = yCursor + s.h / 2;
-        stepCenters.push(stepYCenter);
+        const stepYCenter = stepCenters[index];
 
         // Rect
         svg.append('rect')
@@ -2916,112 +2989,128 @@ function renderFlowMap(spec, theme = null, dimensions = null) {
             .attr('font-size', THEME.fontStep)
             .text(s.text);
 
-        // Arrow to next step (vertical)
+        // Arrow to next step (if there is one)
         if (index < stepSizes.length - 1) {
-            const lineStartY = stepYCenter + s.h / 2 + 6;
-            const lineEndY = lineStartY + THEME.stepSpacing - 12;
-
-            svg.append('line')
-                .attr('x1', stepXCenter)
-                .attr('y1', lineStartY)
-                .attr('x2', stepXCenter)
-                .attr('y2', lineEndY)
-                .attr('stroke', '#888')
-                .attr('stroke-width', 2);
-
-            svg.append('polygon')
-                .attr('points', `${stepXCenter - 4},${lineEndY - 8} ${stepXCenter},${lineEndY} ${stepXCenter + 4},${lineEndY - 8}`)
-                .attr('fill', '#888');
-        }
-
-        yCursor += s.h + THEME.stepSpacing;
-    });
-
-    // If substep groups extend beyond current bounds, increase height and resize SVG
-    if (stepCenters.length > 0) {
-        const firstTop = stepCenters[0] - stepSizes[0].h / 2;
-        const lastBottom = stepCenters[stepCenters.length - 1] + stepSizes[stepSizes.length - 1].h / 2;
-        let minTopSub = Infinity;
-        let maxBottomSub = -Infinity;
-        subNodesPerStep.forEach((nodes, idx) => {
-            if (!nodes.length) return;
-            const groupH = subGroupHeights[idx];
-            const top = stepCenters[idx] - groupH / 2;
-            const bottom = stepCenters[idx] + groupH / 2;
-            if (top < minTopSub) minTopSub = top;
-            if (bottom > maxBottomSub) maxBottomSub = bottom;
-        });
-        if (minTopSub !== Infinity && maxBottomSub !== -Infinity) {
-            const extraTop = Math.max(0, (startY - minTopSub));
-            const extraBottom = Math.max(0, (maxBottomSub - lastBottom));
-            const newHeight = baseHeight + extraTop + extraBottom;
-            if (newHeight > baseHeight) {
-                requiredHeight = newHeight;
-                d3.select('#d3-container').style('height', requiredHeight + 'px');
-                svg.attr('height', requiredHeight).attr('viewBox', `0 0 ${baseWidth} ${requiredHeight}`);
+            const nextStepYCenter = stepCenters[index + 1];
+            const currentBottom = stepYCenter + s.h / 2 + 6;
+            const nextTop = nextStepYCenter - stepSizes[index + 1].h / 2 - 6;
+            
+            if (nextTop > currentBottom) {
+                svg.append('line')
+                    .attr('x1', stepXCenter)
+                    .attr('y1', currentBottom)
+                    .attr('x2', stepXCenter)
+                    .attr('y2', nextTop)
+                    .attr('stroke', '#666')
+                    .attr('stroke-width', 2);
+                svg.append('polygon')
+                    .attr('points', `${stepXCenter},${nextTop} ${stepXCenter - 5},${nextTop - 10} ${stepXCenter + 5},${nextTop - 10}`)
+                    .attr('fill', '#666');
             }
         }
+    });
+
+    // Calculate accurate canvas dimensions based on actual content positions
+    let contentBottom = 0;
+    let contentRight = 0;
+    
+    // Find the bottom of main steps
+    if (stepCenters.length > 0) {
+        for (let i = 0; i < stepCenters.length; i++) {
+            const stepBottom = stepCenters[i] + stepSizes[i].h / 2;
+            const stepRight = centerX + stepSizes[i].w / 2;
+            contentBottom = Math.max(contentBottom, stepBottom);
+            contentRight = Math.max(contentRight, stepRight);
+        }
+    }
+    
+    // Find the bottom and right edge of substeps (which now control the layout)
+    for (let stepIdx = 0; stepIdx < allSubstepPositions.length; stepIdx++) {
+        const stepPositions = allSubstepPositions[stepIdx];
+        for (let nodeIdx = 0; nodeIdx < stepPositions.length; nodeIdx++) {
+            const substep = stepPositions[nodeIdx];
+            const substepBottom = substep.y + substep.h;
+            const substepRight = substep.x + substep.w;
+            contentBottom = Math.max(contentBottom, substepBottom);
+            contentRight = Math.max(contentRight, substepRight);
+        }
+    }
+    
+    // Calculate final dimensions with padding
+    const calculatedHeight = contentBottom + padding;
+    const calculatedWidth = contentRight + padding;
+    
+    // Update canvas dimensions if needed
+    if (calculatedHeight > baseHeight || calculatedWidth > baseWidth) {
+        const finalHeight = Math.max(calculatedHeight, baseHeight);
+        const finalWidth = Math.max(calculatedWidth, baseWidth);
+        
+        d3.select('#d3-container')
+            .style('width', finalWidth + 'px')
+            .style('height', finalHeight + 'px');
+        
+        svg.attr('width', finalWidth)
+           .attr('height', finalHeight)
+           .attr('viewBox', `0 0 ${finalWidth} ${finalHeight}`);
     }
 
-    // Draw substeps to the right of each step
-    stepSizes.forEach((s, idx) => {
-        const nodes = subNodesPerStep[idx];
-        if (!nodes.length) return;
-        const stepYCenter = stepCenters[idx];
-        const groupW = subGroupWidths[idx];
-        const groupH = subGroupHeights[idx];
-        const stepRightX = centerX + s.w / 2;
-        const groupLeftX = stepRightX + subOffsetX;
-        let y = stepYCenter - groupH / 2;
-
-        nodes.forEach(n => {
-            const cy = y + n.h / 2;
-            // Rect
+    // Step 4: Draw substeps using pre-calculated positions (no overlap possible!)
+    allSubstepPositions.forEach((stepPositions, stepIdx) => {
+        const stepYCenter = stepCenters[stepIdx];
+        const stepRightX = centerX + stepSizes[stepIdx].w / 2;
+        
+        stepPositions.forEach((substep, nodeIdx) => {
+            // Draw substep rectangle
             svg.append('rect')
-                .attr('x', groupLeftX)
-                .attr('y', cy - n.h / 2)
-                .attr('width', n.w)
-                .attr('height', n.h)
+                .attr('x', substep.x)
+                .attr('y', substep.y)
+                .attr('width', substep.w)
+                .attr('height', substep.h)
                 .attr('rx', Math.max(4, THEME.rectRadius - 2))
                 .attr('fill', d3.color(THEME.stepFill).brighter(0.5))
                 .attr('stroke', THEME.stepStroke)
                 .attr('stroke-width', Math.max(1, THEME.stepStrokeWidth - 1));
-            // Text
+            
+            // Draw substep text
             svg.append('text')
-                .attr('x', groupLeftX + n.w / 2)
-                .attr('y', cy)
+                .attr('x', substep.x + substep.w / 2)
+                .attr('y', substep.y + substep.h / 2)
                 .attr('text-anchor', 'middle')
                 .attr('dominant-baseline', 'middle')
                 .attr('fill', THEME.stepText)
                 .attr('font-size', Math.max(12, THEME.fontStep - 1))
-                .text(n.text);
-            // L-shaped connector
-            const startX = stepRightX;
-            const startYLine = stepYCenter;
-            const midX = startX + Math.max(8, subOffsetX / 2);
+                .text(substep.text);
+            
+            // Draw L-shaped connector from step to substep
+            const substepCenterY = substep.y + substep.h / 2;
+            const midX = stepRightX + Math.max(8, subOffsetX / 2);
+            
+            // Horizontal line from step
             svg.append('line')
-                .attr('x1', startX)
-                .attr('y1', startYLine)
+                .attr('x1', stepRightX)
+                .attr('y1', stepYCenter)
                 .attr('x2', midX)
-                .attr('y2', startYLine)
+                .attr('y2', stepYCenter)
                 .attr('stroke', '#888')
                 .attr('stroke-width', 1.5);
+            
+            // Vertical line to substep level
             svg.append('line')
                 .attr('x1', midX)
-                .attr('y1', startYLine)
+                .attr('y1', stepYCenter)
                 .attr('x2', midX)
-                .attr('y2', cy)
+                .attr('y2', substepCenterY)
                 .attr('stroke', '#888')
                 .attr('stroke-width', 1.5);
+            
+            // Horizontal line to substep
             svg.append('line')
                 .attr('x1', midX)
-                .attr('y1', cy)
-                .attr('x2', groupLeftX)
-                .attr('y2', cy)
+                .attr('y1', substepCenterY)
+                .attr('x2', substep.x)
+                .attr('y2', substepCenterY)
                 .attr('stroke', '#888')
                 .attr('stroke-width', 1.5);
-
-            y += n.h + subSpacing;
         });
     });
     // Watermark
@@ -3037,9 +3126,9 @@ function renderMultiFlowMap(spec, theme = null, dimensions = null) {
         return;
     }
     
-    // Use provided theme and dimensions or defaults
-    let baseWidth = dimensions?.baseWidth || 900;
-    let baseHeight = dimensions?.baseHeight || 500;
+    // Use provided theme and dimensions (no hardcoded fallbacks for adaptive sizing)
+    let baseWidth = dimensions?.baseWidth || dimensions?.width || 900;
+    let baseHeight = dimensions?.baseHeight || dimensions?.height || 500;
     const padding = dimensions?.padding || 40;
     
     const THEME = {
@@ -3084,16 +3173,16 @@ function renderMultiFlowMap(spec, theme = null, dimensions = null) {
         if (theme.background) d3.select('#d3-container').style('background-color', theme.background);
     }
     
-    // Before SVG, measure sizes to adapt canvas height if needed
-    const tempSvg2 = d3.select('body').append('svg')
+    // Create temporary SVG for text measurement before finalizing canvas dimensions
+    const tempSvg = d3.select('body').append('svg')
         .attr('width', 0)
         .attr('height', 0)
         .style('position', 'absolute')
         .style('left', '-9999px')
         .style('top', '-9999px');
 
-    function measureTextSize2(text, fontSize) {
-        const t = tempSvg2.append('text')
+    function measureTextSize(text, fontSize) {
+        const t = tempSvg.append('text')
             .attr('x', -9999)
             .attr('y', -9999)
             .attr('font-size', fontSize)
@@ -3101,19 +3190,6 @@ function renderMultiFlowMap(spec, theme = null, dimensions = null) {
             .text(text || '');
         const bbox = t.node().getBBox();
         t.remove();
-        return { w: Math.ceil(bbox.width), h: Math.ceil(bbox.height || fontSize) };
-    }
-    
-    // Helpers
-    function measureTextSize(text, fontSize) {
-        const temp = svg.append('text')
-            .attr('x', -9999)
-            .attr('y', -9999)
-            .attr('font-size', fontSize)
-            .attr('dominant-baseline', 'hanging')
-            .text(text || '');
-        const bbox = temp.node().getBBox();
-        temp.remove();
         return { w: Math.ceil(bbox.width), h: Math.ceil(bbox.height || fontSize) };
     }
     function sideCenterPoint(cx, cy, w, h, side) {
@@ -3165,55 +3241,64 @@ function renderMultiFlowMap(spec, theme = null, dimensions = null) {
             .attr('points', `${p1x},${p1y} ${tipX},${tipY} ${p2x},${p2y}`)
             .attr('fill', color);
     }
+    // STEP 1: Measure all content to calculate optimal canvas dimensions
     
-    // Layout centers
-    const centerX = baseWidth / 2;
-    let centerY = baseHeight / 2;
-    
-    // Measure sizes
-    const evSize = measureTextSize2(spec.event, THEME.fontEvent);
+    // Measure central event size
+    const evSize = measureTextSize(spec.event, THEME.fontEvent);
     const eventW = evSize.w + THEME.hPadEvent * 2;
     const eventH = evSize.h + THEME.vPadEvent * 2;
     
+    // Measure causes and effects
     const causes = (spec.causes || []).map(text => {
-        const s = measureTextSize2(text, THEME.fontCause);
+        const s = measureTextSize(text, THEME.fontCause);
         return { text, w: s.w + THEME.hPadNode * 2, h: s.h + THEME.vPadNode * 2 };
     });
     const effects = (spec.effects || []).map(text => {
-        const s = measureTextSize2(text, THEME.fontEffect);
+        const s = measureTextSize(text, THEME.fontEffect);
         return { text, w: s.w + THEME.hPadNode * 2, h: s.h + THEME.vPadNode * 2 };
     });
     
-    // Horizontal positions with guaranteed gap from event
-    const minSideGap = 120;
-    const causeCX = Math.max(padding + 140, centerX - eventW / 2 - minSideGap);
-    const effectCX = Math.min(baseWidth - padding - 140, centerX + eventW / 2 + minSideGap);
-    
-    // Vertical positions (non-overlapping, content-aware)
+    // Calculate required dimensions based on content
     const vSpacing = 20;
     const totalCauseH = causes.reduce((sum, n) => sum + n.h, 0) + Math.max(0, causes.length - 1) * vSpacing;
     const totalEffectH = effects.reduce((sum, n) => sum + n.h, 0) + Math.max(0, effects.length - 1) * vSpacing;
-    // Adapt baseHeight to fit tallest side if needed
-    const requiredHeight = Math.max(totalCauseH, totalEffectH) + 2 * padding + evSize.h + 80;
-    baseHeight = Math.max(baseHeight, requiredHeight);
-
-    // Create SVG after adapting height
+    
+    // Calculate optimal width based on side node sizes and minimum gaps
+    const maxCauseW = Math.max(...causes.map(c => c.w), 0);
+    const maxEffectW = Math.max(...effects.map(e => e.w), 0);
+    const minSideGap = 120; // Gap between event and side nodes
+    const sideMargin = 40; // Margin for side nodes from canvas edge
+    
+    const requiredWidth = maxCauseW + sideMargin + minSideGap + eventW + minSideGap + maxEffectW + sideMargin;
+    const requiredHeight = Math.max(totalCauseH, totalEffectH, eventH) + 2 * padding + 80;
+    
+    // Use calculated dimensions or agent recommendations, whichever is larger
+    const finalWidth = Math.max(baseWidth, requiredWidth);
+    const finalHeight = Math.max(baseHeight, requiredHeight);
+    
+    // STEP 2: Create SVG with proper dimensions
     const svg = d3.select('#d3-container').append('svg')
-        .attr('width', baseWidth)
-        .attr('height', baseHeight)
-        .attr('viewBox', `0 0 ${baseWidth} ${baseHeight}`)
+        .attr('width', finalWidth)
+        .attr('height', finalHeight)
+        .attr('viewBox', `0 0 ${finalWidth} ${finalHeight}`)
         .attr('preserveAspectRatio', 'xMinYMin meet');
+    
+    // STEP 3: Calculate layout positions
+    const centerX = finalWidth / 2;
+    const centerY = finalHeight / 2;
+    
+    // Position side nodes with proper spacing
+    const causeCX = sideMargin + maxCauseW / 2;
+    const effectCX = finalWidth - sideMargin - maxEffectW / 2;
 
-    // Recompute center after adapting height
-    centerY = baseHeight / 2;
-
+    // Position causes and effects vertically
     let cy = centerY - totalCauseH / 2;
     causes.forEach(n => { n.cx = causeCX; n.cy = cy + n.h / 2; cy += n.h + vSpacing; });
     let ey = centerY - totalEffectH / 2;
     effects.forEach(n => { n.cx = effectCX; n.cy = ey + n.h / 2; ey += n.h + vSpacing; });
 
-    // Cleanup temp svg
-    tempSvg2.remove();
+    // Cleanup temporary SVG
+    tempSvg.remove();
     
     // Draw central event (rectangle)
     svg.append('rect')
