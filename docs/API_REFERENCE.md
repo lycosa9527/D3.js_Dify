@@ -6,7 +6,7 @@ MindGraph provides a RESTful API for generating AI-powered data visualizations f
 
 **Base URL**: `http://localhost:9527` (or your deployed server URL)
 
-**API Version**: 2.4.0
+**API Version**: 2.3.9
 
 **Endpoint Compatibility**: Both `/endpoint` and `/api/endpoint` formats are supported for backward compatibility.
 
@@ -438,6 +438,44 @@ generatePNG('Compare cats and dogs', 'en', { theme: 'modern' })
 | **Flow Map** | Sequence of events | Processes and timelines | "How to make coffee" |
 | **Multi-Flow Map** | Cause and effect relationships | Analyzing consequences | "Effects of climate change" |
 | **Bridge Map** | Analogical relationships | Showing similarities | "Learning is like building" |
+
+#### 🚀 Flow Map Enhancements (v2.3.9)
+
+The Flow Map has received major improvements for optimal visual presentation:
+
+**Ultra-Compact Layout Features:**
+- **Revolutionary Positioning**: Substep-first algorithm eliminates all overlapping issues
+- **Adaptive Spacing**: Canvas dimensions automatically adjust to content
+- **75% Title Spacing Reduction**: Minimal spacing around topic text for maximum content density
+- **Professional Design**: Clean, compact layout without sacrificing readability
+
+**Enhanced Flow Map Structure:**
+- **Main Steps**: Sequential process steps positioned vertically
+- **Substeps**: Sub-processes connected to main steps with L-shaped connectors
+- **Adaptive Canvas**: Automatically sized to fit all content perfectly
+- **Smart Positioning**: Substeps positioned first, then main steps align to their groups
+
+**Example Flow Map Prompt:**
+```json
+{
+  "prompt": "制作咖啡的流程图",
+  "language": "zh"
+}
+```
+
+**Flow Map JSON Structure:**
+```json
+{
+  "title": "制作咖啡",
+  "steps": ["准备材料", "加热水", "冲泡", "享用"],
+  "substeps": [
+    {"step": "准备材料", "substeps": ["咖啡豆", "过滤纸", "咖啡杯"]},
+    {"step": "加热水", "substeps": ["烧开水", "调节温度"]},
+    {"step": "冲泡", "substeps": ["湿润过滤纸", "倒入咖啡粉", "缓慢注水"]},
+    {"step": "享用", "substeps": ["品尝", "清洗器具"]}
+  ]
+}
+```
 
 ### Traditional Charts
 

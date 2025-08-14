@@ -15,7 +15,7 @@ curl http://localhost:9527/status
 ```json
 {
   "status": "healthy",
-  "version": "2.4.0",
+  "version": "2.3.9",
   "services": {
     "qwen_api": "connected",
     "playwright": "ready"
@@ -489,6 +489,88 @@ cp config.py config.py.backup
 
 # Backup generated images
 tar -czf mindgraph_exports_$(date +%Y%m%d).tar.gz mindgraph_exports/
+```
+
+## 📊 **Diagram Quality Issues (v2.3.9)**
+
+### **Flow Map Improvements**
+
+**If you're experiencing flow map issues, v2.3.9 includes major fixes:**
+
+#### **Fixed Issues:**
+- ✅ **Substep Overlapping**: Completely eliminated through new positioning algorithm
+- ✅ **Excessive Spacing**: 75% reduction in title spacing, 50% reduction in group spacing  
+- ✅ **Canvas Sizing**: Adaptive canvas that perfectly fits content
+- ✅ **Text Cutoff**: Proper padding and text extension handling
+
+#### **Flow Map Troubleshooting:**
+
+**Problem: Substeps Still Overlap**
+```bash
+# Solution: Ensure you're using v2.3.9
+curl http://localhost:9527/status | grep version
+# Should show "2.3.9"
+
+# Clear browser cache if using web interface
+# Hard refresh: Ctrl+F5 (Windows) or Cmd+Shift+R (Mac)
+```
+
+**Problem: Too Much Spacing Around Title**
+```bash
+# This is now optimized in v2.3.9
+# Title spacing reduced from 40px to 10px
+# Content offset reduced from 60px to 15px
+# No action needed - automatic improvement
+```
+
+### **Classification Improvements**
+
+**Enhanced Chinese Support in v2.3.9:**
+
+#### **Fixed Classifications:**
+- ✅ **"括号图"** → Now correctly identifies as `brace_map` (was `org_chart`)
+- ✅ **"复流程图"** → Now correctly identifies as `multi_flow_map` (was `flow_map`)
+- ✅ **All Chinese Terms** → Comprehensive coverage for all 12 diagram types
+
+#### **Classification Troubleshooting:**
+
+**Problem: Wrong Diagram Type Generated**
+```bash
+# Test classification accuracy
+curl -X POST http://localhost:9527/api/generate_png \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "生成关于咖啡制作的流程图", "language": "zh"}'
+  
+# Should generate flow_map, not multi_flow_map or other types
+```
+
+**Problem: Chinese Prompts Not Working**
+```bash
+# Verify language parameter
+{
+  "prompt": "制作学习方法的圆圈图",
+  "language": "zh"  # Important: specify Chinese
+}
+
+# v2.3.9 has comprehensive Chinese examples for all diagram types
+```
+
+### **Canvas and Rendering Issues**
+
+#### **Adaptive Canvas (v2.3.9):**
+
+**Problem: Canvas Too Large or Too Small**
+```bash
+# v2.3.9 automatically calculates optimal canvas size
+# Canvas dimensions now match content bounds perfectly
+# No manual adjustments needed
+```
+
+**Problem: Text Cut Off at Edges**
+```bash
+# Fixed in v2.3.9 with proper text extension calculations
+# Added safety margins and padding calculations
+# Automatic improvement - no action required
 ```
 
 ---

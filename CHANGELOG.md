@@ -5,6 +5,89 @@ All notable changes to the MindGraph project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.9] - 2025-01-27
+
+### 🚀 Major Flow Map Enhancements
+
+#### Ultra-Compact Layout Optimization
+- **Revolutionary Substep-First Positioning**: Implemented breakthrough algorithm that calculates all substep positions first, then aligns main steps to their substep groups, completely eliminating overlapping issues
+- **75% Title Spacing Reduction**: Optimized spacing around topic text (gap: 40px→10px, offset: 60px→15px) for maximum content density
+- **50% Group Spacing Reduction**: Reduced spacing between substep groups (20px→10px) while maintaining visual clarity
+- **Adaptive Canvas Sizing**: Canvas dimensions now perfectly match content bounds with accurate height/width calculations
+- **Professional Compact Design**: Achieved ultra-compact layout without sacrificing readability or visual hierarchy
+
+#### Flow Map Technical Improvements
+- **Substep Overlap Resolution**: Fixed critical overlapping issues through innovative positioning algorithm
+- **Dynamic Spacing Calculations**: Implemented adaptive spacing that responds to content complexity
+- **Precise Canvas Measurements**: Canvas size now calculated from actual positioned elements
+- **Enhanced Text Rendering**: Added safety margins and proper text extension handling
+- **Optimized Performance**: Streamlined rendering pipeline for faster diagram generation
+
+#### Classification System Cleanup
+- **Removed Legacy Functions**: Eliminated unused `classify_graph_type_with_llm` and `agent_graph_workflow` functions
+- **LLM-Driven Classification**: Enhanced `extract_topics_and_styles_from_prompt_qwen` with comprehensive examples for all 12 diagram types
+- **Fallback Logic Removal**: Eliminated hardcoded keyword-based fallbacks in favor of robust LLM classification
+- **Multi-Flow Map Recognition**: Added proper recognition for "复流程图" (multi-flow map) vs "流程图" (flow map)
+- **Brace Map Chinese Support**: Enhanced recognition for "括号图" and "花括号" terms
+
+### 🔧 Technical Enhancements
+
+#### Canvas Sizing & Positioning
+- **Content-Based Dimensions**: All canvas sizes now calculated from actual content boundaries
+- **Text Cutoff Prevention**: Added proper padding and text extension calculations
+- **Adaptive Height/Width**: Eliminated hardcoded minimums in favor of content-driven sizing
+- **Multi-Flow Map Optimization**: Refined height calculations to reduce excess vertical space
+
+#### D3.js Renderer Improvements
+- **Flow Map Revolution**: Complete rewrite of flow map positioning algorithm
+- **Substep Group Management**: Advanced substep positioning with perfect spacing
+- **L-Shaped Connectors**: Proper connector drawing from steps to substeps
+- **Theme Integration**: Consistent theming across all diagram improvements
+- **Error-Free Rendering**: Eliminated JavaScript errors and improved stability
+
+#### Agent Synchronization
+- **Python-JavaScript Alignment**: Synchronized calculations between flow map agent and D3.js renderer
+- **Consistent Spacing Values**: Matched spacing constants across agent and renderer
+- **Dimension Recommendations**: Improved agent dimension calculations to match actual rendering
+
+### 🛡️ Stability & Reliability
+
+#### Overlap Prevention
+- **Zero Overlapping**: Completely eliminated substep node overlapping through advanced algorithms
+- **Collision Detection**: Robust positioning that prevents element conflicts
+- **Content Validation**: Enhanced validation of diagram specifications
+- **Error Recovery**: Improved error handling throughout the rendering pipeline
+
+#### Performance Optimization
+- **Faster Rendering**: Optimized algorithms for quicker diagram generation
+- **Reduced Complexity**: Simplified logic while maintaining functionality
+- **Memory Efficiency**: Better resource usage in positioning calculations
+- **Scalable Architecture**: Improved performance for complex diagrams
+
+### 📋 Code Quality Improvements
+
+#### Codebase Cleanup
+- **Removed Legacy Code**: Eliminated 2 unused classification functions and workflow
+- **Simplified Logic**: Cleaner, more maintainable code structure
+- **Consistent Formatting**: Standardized code style across all improvements
+- **Comprehensive Testing**: Extensive testing of all new functionality
+
+#### Documentation Updates
+- **Inline Comments**: Enhanced code documentation with clear explanations
+- **Function Descriptions**: Detailed documentation of all modified functions
+- **Algorithm Explanations**: Clear descriptions of new positioning algorithms
+- **Version Updates**: Updated all version references to 2.3.9
+
+### 🔄 Migration Guide
+
+#### From Version 2.3.8 to 2.3.9
+
+1. **Flow Map Improvements**: Enjoy vastly improved flow map rendering with no overlapping
+2. **Compact Layouts**: All diagrams now use optimized spacing for better content density
+3. **Enhanced Classification**: More accurate diagram type detection, especially for Chinese terms
+4. **Canvas Optimization**: Better canvas sizing that perfectly fits content
+5. **No Breaking Changes**: All existing functionality preserved while adding enhancements
+
 ## [2.3.8] - 2025-08-10
 
 ### 🎯 Enhanced: Concept Map Spacing and Text Improvements
