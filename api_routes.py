@@ -384,19 +384,15 @@ def generate_png():
     
     # Use brace map agent for brace maps
     if graph_type == 'brace_map':
-        try:
-            from brace_map_agent import BraceMapAgent
-            brace_agent = BraceMapAgent()
-            agent_result = brace_agent.generate_diagram(spec)
-            if agent_result['success']:
-                # Use agent result instead of spec for brace maps
-                spec = agent_result
-            else:
-                logger.warning(f"Brace map agent failed: {agent_result.get('error')}")
-                # Fall back to original spec
-        except Exception as e:
-            logger.error(f"Error using brace map agent: {e}")
-            # Fall back to original spec
+        from brace_map_agent import BraceMapAgent
+        brace_agent = BraceMapAgent()
+        agent_result = brace_agent.generate_diagram(spec)
+        if agent_result['success']:
+            # Use agent result instead of spec for brace maps
+            spec = agent_result
+        else:
+            logger.error(f"Brace map agent failed: {agent_result.get('error')}")
+            return jsonify({'error': f"Brace map generation failed: {agent_result.get('error')}"}), 500
     elif graph_type == 'multi_flow_map':
         # Enhance multi-flow map spec and optionally use recommended dimensions later
         try:
@@ -639,8 +635,24 @@ def generate_png():
             </body></html>
             '''
             async with async_playwright() as p:
-                browser = await p.chromium.launch(headless=True)
+                # Optimize browser for large HTML content
+                browser = await p.chromium.launch(
+                    headless=True,
+                    args=[
+                        '--no-sandbox',
+                        '--disable-dev-shm-usage',
+                        '--disable-gpu',
+                        '--disable-web-security',
+                        '--disable-features=VizDisplayCompositor',
+                        '--memory-pressure-off',
+                        '--max_old_space_size=4096'
+                    ]
+                )
                 page = await browser.new_page()
+                
+                # Set timeout to 60 seconds for all content
+                page.set_default_timeout(60000)  # 60 seconds default
+                page.set_default_navigation_timeout(60000)
                 
                 # Set up console and error logging BEFORE loading content
                 console_messages = []
@@ -655,9 +667,14 @@ def generate_png():
                 if html_size > 100000:  # Log if HTML is very large
                     logger.warning(f"Large HTML content: {html_size} characters")
                 
-                await page.set_content(html)
+                # Set timeout to 60 seconds for all content
+                timeout_ms = 60000  # 60 seconds for all content
+                logger.info(f"Setting page content timeout to {timeout_ms}ms for HTML size {html_size}")
+                
+                await page.set_content(html, timeout=timeout_ms)
                 
                 # Wait for rendering and check for console errors
+                logger.info("Waiting for initial rendering...")
                 await asyncio.sleep(3.0)
                 
                 # Log all console messages and errors
@@ -667,7 +684,12 @@ def generate_png():
                     logger.error(f"Browser error: {error}")
                 
                 # Wait a bit more for rendering to complete
+                logger.info("Waiting for final rendering...")
                 await asyncio.sleep(2.0)
+                
+                # Wait for rendering to complete
+                logger.info("Waiting for rendering to complete...")
+                await asyncio.sleep(2.0)  # Standard wait time
                 
                 # Wait for SVG element to be created with timeout
                 try:

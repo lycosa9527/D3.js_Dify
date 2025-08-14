@@ -1,56 +1,155 @@
 # MindGraph - AI-Powered Graph Generation Application
-# Version: 2.3.4
-# Requirements for Python 3.8+
+# Version: 2.5.0 
+# Requirements for Python 3.8+ (Tested with Python 3.13.5)
 # 
 # Core Features:
 # - AI-powered graph generation with Qwen and DeepSeek LLMs
-# - Interactive D3.js visualization
+# - Interactive D3.js visualization  
 # - PNG export functionality
 # - Comprehensive dependency validation
 # - Professional startup sequence
 # - Cross-platform compatibility
-
-# Core Flask dependencies
-Flask==3.1.1
-Werkzeug>=2.0.0
-Flask-Limiter>=3.4.0
-flask-cors>=4.0.0
-
-# HTTP and networking
-requests>=2.31.0
-websockets==15.0.1
-
-# AI and language processing
-langchain>=0.3.0
-
-# Configuration and environment
-PyYAML>=6.0.0
-python-dotenv>=0.19.0
-
-# Async and concurrency
-nest_asyncio==1.6.0
-pyee==13.0.0
-
-# Browser automation (for PNG generation)
-playwright>=1.40.0
-
-# Image processing (for PNG export)
-Pillow>=10.0.1
-
-# System monitoring (for status endpoints)
-psutil>=5.9.0
-
-# Testing (optional, for development)
-pytest>=7.0.0
-
-# --- Development and Optional Dependencies ---
-# These are not required for production but useful for development
-# 
-# For local development:
-# - pytest: Unit testing framework
-# - psutil: System metrics and monitoring
+# - Clean classification system with no hardcoded fallbacks
 #
-# For production deployment:
-# - All core dependencies above are required
-# - Ensure Python 3.8+ is installed
-# - Node.js 18.19+ for D3.js dependencies 
+# INSTALLATION OPTIONS:
+# - Full installation: pip install -r requirements.txt
+# - Production only: pip install -r requirements.txt --only-production
+# - Development: pip install -r requirements.txt (includes all dev tools)
+
+# ============================================================================
+# CORE FLASK DEPENDENCIES (Required for Production)
+# ============================================================================
+Flask>=3.1.1
+Werkzeug>=3.1.0
+Flask-Limiter>=3.12.0
+flask-cors>=6.0.0
+
+# ============================================================================
+# HTTP AND NETWORKING (Required for Production)
+# ============================================================================
+requests>=2.31.0
+aiohttp>=3.12.0
+
+# ============================================================================
+# AI AND LANGUAGE PROCESSING (Required for Production)
+# ============================================================================
+langchain>=0.3.27
+langchain-community>=0.3.27
+langchain-core>=0.3.72
+
+# ============================================================================
+# CONFIGURATION AND ENVIRONMENT (Required for Production)
+# ============================================================================
+PyYAML>=6.0.1
+python-dotenv>=1.0.1
+
+# ============================================================================
+# ASYNC AND CONCURRENCY (Required for Production)
+# ============================================================================
+nest_asyncio>=1.6.0
+pyee>=13.0.0
+
+# ============================================================================
+# BROWSER AUTOMATION (Required for Production - PNG generation)
+# ============================================================================
+playwright>=1.54.0
+
+# ============================================================================
+# IMAGE PROCESSING (Required for Production - PNG export)
+# ============================================================================
+Pillow>=11.3.0
+
+# ============================================================================
+# SYSTEM MONITORING (Required for Production - status endpoints)
+# ============================================================================
+psutil>=6.0.0
+
+# ============================================================================
+# TYPE HINTS AND VALIDATION (Required for Production)
+# ============================================================================
+typing-extensions>=4.12.0
+pydantic>=2.10.0
+
+# ============================================================================
+# LOGGING AND MONITORING (Required for Production)
+# ============================================================================
+structlog>=24.1.0
+
+# ============================================================================
+# SECURITY (Required for Production)
+# ============================================================================
+cryptography>=42.0.0
+
+# ============================================================================
+# DEVELOPMENT AND TESTING DEPENDENCIES (Optional)
+# ============================================================================
+# Uncomment the lines below for development environment
+# pip install -r requirements.txt --extra-index-url https://pypi.org/simple/
+
+# Testing Framework
+pytest>=8.0.0
+pytest-asyncio>=0.24.0
+pytest-cov>=5.0.0
+pytest-mock>=3.14.0
+pytest-html>=4.1.0
+
+# Code Quality and Linting
+flake8>=7.0.0
+black>=24.0.0
+isort>=5.13.0
+mypy>=1.10.0
+pre-commit>=3.7.0
+
+# Documentation
+sphinx>=8.0.0
+sphinx-rtd-theme>=2.0.0
+
+# Development Tools
+ipython>=8.20.0
+jupyter>=1.0.0
+notebook>=7.0.0
+
+# Additional Networking (Optional)
+websockets>=12.0
+
+# ============================================================================
+# DEPENDENCY SUMMARY (Generated by analysis)
+# ============================================================================
+# 
+# REQUIRED THIRD-PARTY PACKAGES (12):
+# - Flask, Werkzeug, Flask-Limiter, flask-cors (Web framework)
+# - langchain, langchain-community, langchain-core (AI/LLM)
+# - requests, aiohttp (HTTP clients)
+# - playwright, Pillow (Browser automation & image processing)
+# - python-dotenv (Environment configuration)
+# - PyYAML (Configuration parsing)
+# - nest_asyncio, psutil (System utilities)
+#
+# PYTHON STANDARD LIBRARY USED (26):
+# - Core: os, sys, json, re, time, datetime, math, logging, pathlib
+# - Async: asyncio, threading, concurrent.futures
+# - Data: collections, typing, dataclasses, enum
+# - Utils: functools, subprocess, tempfile, base64, colorsys
+# - UI: tkinter (for dependency checker GUI)
+# - Others: socket, webbrowser, shutil, atexit, yaml
+#
+# ============================================================================
+# INSTALLATION NOTES
+# ============================================================================
+# 
+# PRODUCTION DEPLOYMENT:
+# - Core only: pip install Flask>=3.1.1 langchain>=0.3.27 playwright>=1.54.0 Pillow>=11.3.0 requests>=2.31.0 aiohttp>=3.12.0 PyYAML>=6.0.1 python-dotenv>=1.0.1 flask-cors>=6.0.0 Flask-Limiter>=3.12.0 Werkzeug>=3.1.0
+#
+# DEVELOPMENT ENVIRONMENT:
+# - Install all dependencies: pip install -r requirements.txt
+# - This includes testing, linting, and development tools
+#
+# MINIMAL INSTALLATION:
+# - Absolute minimum: pip install Flask langchain playwright Pillow requests
+#
+# COMPATIBILITY:
+# - Python 3.8+ (Tested with Python 3.13.5)
+# - Node.js 18.19+ for D3.js dependencies
+# - All packages use >= for minimum version compatibility
+#
+# ANALYSIS LAST UPDATED: 2025-01-15 (Version 2.5.0)

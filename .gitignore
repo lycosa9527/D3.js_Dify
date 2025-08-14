@@ -44,6 +44,13 @@ test_output.jpg
 *.log
 temp/
 tmp/
+logs/*.log
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Docker
 .dockerignore
@@ -51,4 +58,7 @@ tmp/
 # Environment variables
 .env
 .env.local
-.env.*.local 
+.env.*.local
+
+# Development temporary files
+development_prompts/*.md 

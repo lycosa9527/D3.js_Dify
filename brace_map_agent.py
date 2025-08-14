@@ -1136,9 +1136,13 @@ class BraceMapAgent:
                     'debug_logs': self.debugger.get_logs()
                 }
             
-            # Validate required fields with defaults
+            # Validate required fields - no fallbacks
             if 'topic' not in spec or not spec['topic']:
-                spec['topic'] = 'Main Topic'
+                return {
+                    'success': False,
+                    'error': 'Invalid specification: missing or empty "topic" field',
+                    'debug_logs': self.debugger.get_logs()
+                }
             
             if 'parts' not in spec or not isinstance(spec['parts'], list):
                 return {
@@ -1163,11 +1167,15 @@ class BraceMapAgent:
                         'debug_logs': self.debugger.get_logs()
                     }
                 
-                # Ensure subparts is a list
+                # Validate subparts structure
                 if 'subparts' not in part:
-                    part['subparts'] = []
+                    part['subparts'] = []  # Allow missing subparts as empty list
                 elif not isinstance(part['subparts'], list):
-                    part['subparts'] = []
+                    return {
+                        'success': False,
+                        'error': f'Invalid part at index {i}: "subparts" must be a list',
+                        'debug_logs': self.debugger.get_logs()
+                    }
                 
                 # Validate subparts with enhanced error messages
                 for j, subpart in enumerate(part['subparts']):
@@ -1640,9 +1648,9 @@ class BraceMapAgent:
         # Add watermark space (bottom and right margins)
         watermark_margin = 24  # Tighter watermark margin
         
-        # Calculate final dimensions with minimal padding
-        final_width = max(required_width + watermark_margin, 800)  # Increased minimum width for 5-column layout
-        final_height = max(required_height + watermark_margin, 400)  # Minimum height
+        # Calculate final dimensions with minimal padding - no hardcoded minimums
+        final_width = required_width + watermark_margin
+        final_height = required_height + watermark_margin
         
         # Ensure reasonable aspect ratio without shrinking content width/height
         aspect_ratio = final_width / final_height
@@ -1687,16 +1695,25 @@ class BraceMapAgent:
         # Add watermark space (bottom and right margins)
         watermark_margin = 80  # Space for watermark
         
-        # Calculate optimal dimensions with asymmetric margins
-        # Left: content_padding, Right: very small fixed spacing to trim trailing gap
-        right_spacing = 12  # keep a small buffer after subparts
+        # Calculate optimal dimensions with proper text padding
+        # For center-anchored text, we need padding equal to half the maximum text width plus buffer
+        # Find the maximum width of all nodes to ensure text doesn't get cut off
+        max_text_extension = 0
+        if nodes:
+            for node in nodes:
+                # For center-anchored text, calculate how far it extends beyond its position
+                text_extension = node.width / 2
+                max_text_extension = max(max_text_extension, text_extension)
+        
+        # Right padding should be at least the maximum text extension plus a small buffer
+        right_spacing = max(50, max_text_extension + 20)  # Ensure adequate padding for center-anchored text
         optimal_width = int(content_width + content_padding + right_spacing)
         # Height keeps additional space for watermark at bottom
         optimal_height = int(content_height + 2 * content_padding + watermark_margin)
         
-        # Ensure minimum size and trim excessive right-side whitespace by fitting to content bounds
-        optimal_width = max(int(optimal_width), 600)
-        optimal_height = max(int(optimal_height), 400)
+        # Ensure content fits without excessive whitespace - no hardcoded minimums
+        optimal_width = int(optimal_width)
+        optimal_height = int(optimal_height)
         
         # Ensure reasonable aspect ratio without shrinking content; expand the smaller side
         aspect_ratio = optimal_width / optimal_height
@@ -1864,12 +1881,14 @@ class BraceMapAgent:
             )
             adjusted_units.append(adjusted_unit)
         
-        # After adjustments, recompute tight canvas width to trim right-side spacing
+        # After adjustments, recompute tight canvas width accounting for center-anchored text
         if nodes:
-            adjusted_max_x = max(node.x + node.width for node in nodes)
-            # Keep a small right buffer; do not re-add left padding (nodes are absolute)
-            tight_right_buffer = 12
-            tight_width = int(max(adjusted_max_x + tight_right_buffer, 600))
+            # For center-anchored text, the rightmost edge is at node.x + node.width/2
+            adjusted_max_x = max(node.x + node.width/2 for node in nodes)
+            # Add buffer for center-anchored text (half width of largest text + safety margin)
+            max_half_width = max(node.width/2 for node in nodes) if nodes else 0
+            tight_right_buffer = max(50, max_half_width + 20)
+            tight_width = int(adjusted_max_x + tight_right_buffer)
             # Update optimal dimensions width only (preserve height and padding)
             optimal_dimensions = {
                 **optimal_dimensions,

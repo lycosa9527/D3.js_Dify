@@ -30,6 +30,11 @@ WEB_STYLE_DEMO = '/style-demo'
 WEB_TEST_STYLE_MANAGER = '/test-style-manager'
 WEB_TEST_PNG_GENERATION = '/test-png-generation'
 WEB_SIMPLE_TEST = '/simple-test'
+WEB_BROWSER_TEST = '/browser-test'
+WEB_BUBBLE_MAP_TEST = '/bubble-map-test'
+WEB_DEBUG_THEME_CONVERSION = '/debug-theme-conversion'
+WEB_SIMPLE_THEME_TEST = '/simple-theme-test'
+WEB_TIMING_STATS = '/timing-stats'
 
 # ============================================================================
 # STATIC RESOURCES
@@ -65,7 +70,12 @@ def get_web_urls():
         'style_demo': WEB_STYLE_DEMO,
         'test_style_manager': WEB_TEST_STYLE_MANAGER,
         'test_png_generation': WEB_TEST_PNG_GENERATION,
-        'simple_test': WEB_SIMPLE_TEST
+        'simple_test': WEB_SIMPLE_TEST,
+        'browser_test': WEB_BROWSER_TEST,
+        'bubble_map_test': WEB_BUBBLE_MAP_TEST,
+        'debug_theme_conversion': WEB_DEBUG_THEME_CONVERSION,
+        'simple_theme_test': WEB_SIMPLE_THEME_TEST,
+        'timing_stats': WEB_TIMING_STATS
     }
 
 def get_static_urls():

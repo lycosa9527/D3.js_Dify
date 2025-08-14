@@ -127,69 +127,9 @@ def get_llm_timing_stats():
 # ----------------------------------------------------------------------------
 # Explicit intent detection helpers (language-aware keyword mapping)
 # ----------------------------------------------------------------------------
-def _normalize_for_matching(text: str) -> str:
-    if not isinstance(text, str):
-        return ""
-    lowered = text.strip().lower()
-    lowered = re.sub(r"\s+", " ", lowered)
-    return lowered
+# Removed helper functions - no longer needed with clean LLM-only classification
 
-def _strip_spaces_for_cjk(text: str) -> str:
-    return text.replace(" ", "") if isinstance(text, str) else ""
-
-def detect_explicit_diagram_intent(user_prompt: str) -> str:
-    """
-    Return an explicit diagram type if the prompt clearly names it.
-    Prioritizes specific names/aliases before generic intent.
-    """
-    if not isinstance(user_prompt, str):
-        return ""
-    p_norm = _normalize_for_matching(user_prompt)
-    p_nospace = _strip_spaces_for_cjk(user_prompt)
-
-    multi_flow_aliases = [
-        "复流程图", "多重流程图", "因果关系图", "因果分析图", "多因果图",
-        "multi-flow map", "multi flow map", "multiflow",
-        "cause-effect map", "cause and effect map"
-    ]
-    fishbone_aliases = ["鱼骨图", "石川图", "ishikawa"]
-    flowchart_aliases = ["流程图", "flowchart", "flow chart"]
-    flow_map_aliases = [
-        "flow map", "flow-map", "flowmap",
-        # Heuristic Chinese indicators for Thinking Maps Flow Map
-        "流程思维图", "流程映射图", "流程图(思维)", "流程图（思维）"
-    ]
-    tree_map_aliases = [
-        "tree map", "tree-map", "treemap", "tree diagram",
-        "树形图", "树状图", "分类图", "归类图"
-    ]
-
-    # If the user explicitly mentions sub-steps/substeps, prefer the Thinking Maps flow_map
-    substep_indicators = ["sub-steps", "substeps", "子步骤", "子 步骤"]
-    if any(ind in p_norm for ind in substep_indicators) or any(ind in p_nospace for ind in substep_indicators):
-        return "flow_map"
-
-    if any(alias in user_prompt for alias in fishbone_aliases) or any(alias in p_norm for alias in fishbone_aliases):
-        return "fishbone_diagram"
-    if any(alias in user_prompt for alias in multi_flow_aliases) or any(alias in p_norm for alias in multi_flow_aliases) or any(alias in p_nospace for alias in multi_flow_aliases):
-        return "multi_flow_map"
-    if any(alias in user_prompt for alias in flow_map_aliases) or any(alias in p_norm for alias in flow_map_aliases) or any(alias in p_nospace for alias in flow_map_aliases):
-        return "flow_map"
-    if any(alias in user_prompt for alias in tree_map_aliases) or any(alias in p_norm for alias in tree_map_aliases) or any(alias in p_nospace for alias in tree_map_aliases):
-        return "tree_map"
-    # Ambiguous 'flowchart/流程图' handling: prefer flow_map when prompt talks about steps and not classic flowchart control-flow
-    contains_flowchart = any(alias in user_prompt for alias in flowchart_aliases) or any(alias in p_norm for alias in flowchart_aliases)
-    if contains_flowchart:
-        step_indicators = ["步骤", "工序", "过程", "steps", "step-by-step", "sequential", "sequence"]
-        flowchart_only_indicators = ["判断", "条件", "分支", "循环", "decision", "branch", "condition", "loop", "gateway", "yes/no"]
-        mentions_steps = any(ind in user_prompt for ind in step_indicators) or any(ind in p_norm for ind in step_indicators)
-        mentions_flowchart_controls = any(ind in user_prompt for ind in flowchart_only_indicators) or any(ind in p_norm for ind in flowchart_only_indicators)
-        if mentions_steps and not mentions_flowchart_controls:
-            return "flow_map"
-        return "flowchart"
-    if any(k in p_norm for k in ["因果", "原因", "影响", "后果", "cause", "effect"]):
-        return "multi_flow_map"
-    return ""
+# Removed detect_explicit_diagram_intent - redundant with LLM classification
 
 
 class QwenLLM(LLM):
@@ -467,284 +407,7 @@ def extract_yaml_from_code_block(text):
 
     return s
 
-def classify_graph_type_with_llm(user_prompt: str, language: str = 'zh') -> str:
-    """
-    Use the LLM to classify the user's intent into the appropriate diagram type.
-    
-    Args:
-        user_prompt: The user's input prompt
-        language: Language for processing ('zh' or 'en')
-    
-    Returns:
-        str: Diagram type from available types
-    """
-    # Get available diagram types
-    from prompts import get_available_diagram_types
-    available_types = get_available_diagram_types()
-    
-    # First, try explicit detection overrides
-    explicit = detect_explicit_diagram_intent(user_prompt)
-    if explicit:
-        return explicit
-
-    # LLM prompt logic for type detection
-    if language == 'zh':
-        prompt_text = (
-            "你是一个图谱类型分类助手。根据用户的需求，判断他们想要创建哪种类型的图表。\n"
-            "\n【可用图表类型】\n"
-            "# 思维导图 (Thinking Maps)\n"
-            "- double_bubble_map: 比较和对比两个主题\n"
-            "- bubble_map: 描述单个主题的特征\n"
-            "- circle_map: 在上下文中定义主题\n"
-            "- flow_map: 序列事件或过程\n"
-            "- brace_map: 显示整体/部分关系\n"
-            "- tree_map: 分类和归类信息\n"
-            "- multi_flow_map: 显示因果关系\n"
-            "- bridge_map: 桥形图 - 显示类比和相似性\n"
-            "\n"
-            "# 概念图 (Concept Maps)\n"
-            "- concept_map: 显示概念之间的关系\n"
-            "- semantic_web: 创建相关概念的网络\n"
-            "\n"
-            "# 思维导图 (Mind Maps)\n"
-            "- mindmap: 围绕中心主题组织想法\n"
-            "- radial_mindmap: 创建径向思维导图结构\n"
-            "\n"
-            "# 常用图表 (Common Diagrams)\n"
-            "- venn_diagram: 显示重叠集合\n"
-            "- fishbone_diagram: 分析因果关系\n"
-            "- flowchart: 显示流程过程\n"
-            "- org_chart: 显示组织结构\n"
-            "- timeline: 显示时间顺序事件\n"
-            "\n【重要区分】\n"
-            "- 比较/对比 (compare/contrast): 使用 double_bubble_map\n"
-            "- 类比 (analogy): 使用 bridge_map\n"
-            "- 概念关系 (concept relationships): 使用 concept_map\n"
-            "- 思维组织 (idea organization): 使用 mindmap\n"
-            "\n【规则】\n"
-            "- 仔细分析用户的需求和意图\n"
-            "- 选择最适合的图表类型\n"
-            "- 只输出图表类型名称，不要其他内容\n"
-            "- 必须使用下划线格式，如：double_bubble_map, bubble_map, bridge_map\n"
-            "- 不要使用空格或连字符，如：不要写 'double bubble map' 或 'double-bubble-map'\n"
-            "\n【示例】\n"
-            "用户需求：比较猫和狗\n输出：double_bubble_map\n"
-            "用户需求：生成一幅关于风电和水电的双气泡图\n输出：double_bubble_map\n"
-            "用户需求：制作双气泡图比较城市和乡村\n输出：double_bubble_map\n"
-            "用户需求：双气泡图：比较传统能源和可再生能源\n输出：double_bubble_map\n"
-            "用户需求：类比：手之于人，如同轮子之于车\n输出：bridge_map\n"
-            "用户需求：用桥形图类比光合作用和呼吸作用\n输出：bridge_map\n"
-            "用户需求：描述太阳系的特征\n输出：bubble_map\n"
-            "用户需求：展示水循环过程\n输出：flow_map\n"
-            "用户需求：分析全球变暖的原因和影响\n输出：multi_flow_map\n"
-            "用户需求：创建概念图显示生态系统\n输出：concept_map\n"
-            "用户需求：制作思维导图整理学习内容\n输出：mindmap\n"
-            "用户需求：绘制维恩图比较三个集合\n输出：venn_diagram\n"
-            "用户需求：制作鱼骨图分析问题原因\n输出：fishbone_diagram\n"
-            "用户需求：绘制流程图说明操作步骤\n输出：flowchart\n"
-            "用户需求：创建组织架构图\n输出：org_chart\n"
-            "用户需求：制作时间线显示历史事件\n输出：timeline\n"
-            "\n用户需求：{user_prompt}\n你的输出："
-        )
-    else:
-        prompt_text = (
-            "You are a diagram type classifier. Based on the user's request, determine which type of diagram they want to create.\n"
-            "\n[Available Diagram Types]\n"
-            "# Thinking Maps\n"
-            "- double_bubble_map: Compare and contrast two topics\n"
-            "- bubble_map: Describe attributes of a single topic\n"
-            "- circle_map: Define a topic in context\n"
-            "- flow_map: Sequence events or processes\n"
-            "- brace_map: Show whole/part relationships\n"
-            "- tree_map: Categorize and classify information\n"
-            "- multi_flow_map: Show cause and effect relationships\n"
-            "- bridge_map: Show analogies and similarities\n"
-            "\n"
-            "# Concept Maps\n"
-            "- concept_map: Show relationships between concepts\n"
-            "- semantic_web: Create a web of related concepts\n"
-            "\n"
-            "# Mind Maps\n"
-            "- mindmap: Organize ideas around a central topic\n"
-            "- radial_mindmap: Create a radial mind map structure\n"
-            "\n"
-            "# Common Diagrams\n"
-            "- venn_diagram: Show overlapping sets\n"
-            "- fishbone_diagram: Analyze cause and effect\n"
-            "- flowchart: Show process flow\n"
-            "- org_chart: Show organizational structure\n"
-            "- timeline: Show chronological events\n"
-            "\n[Important Distinctions]\n"
-            "- Compare/contrast: use double_bubble_map\n"
-            "- Analogy: use bridge_map\n"
-            "- Concept relationships: use concept_map\n"
-            "- Idea organization: use mindmap\n"
-            "\n[Rules]\n"
-            "- Carefully analyze the user's needs and intent\n"
-            "- Choose the most appropriate diagram type\n"
-            "- Output only the diagram type name, nothing else\n"
-            "- Must use underscore format, e.g.: double_bubble_map, bubble_map, bridge_map\n"
-            "- Do not use spaces or hyphens, e.g.: do not write 'double bubble map' or 'double-bubble-map'\n"
-            "\n[Examples]\n"
-            "User request: Compare cats and dogs\nOutput: double_bubble_map\n"
-            "User request: Generate a double bubble map about wind power and hydropower\nOutput: double_bubble_map\n"
-            "User request: Create double bubble map comparing cities and rural areas\nOutput: double_bubble_map\n"
-            "User request: Double bubble map: compare traditional and renewable energy\nOutput: double_bubble_map\n"
-            "User request: Analogy: hand is to person as wheel is to car\nOutput: bridge_map\n"
-            "User request: Use bridge map to analogize photosynthesis and respiration\nOutput: bridge_map\n"
-            "User request: Describe characteristics of solar system\nOutput: bubble_map\n"
-            "User request: Show water cycle process\nOutput: flow_map\n"
-            "User request: Analyze causes and effects of global warming\nOutput: multi_flow_map\n"
-            "User request: Create concept map showing ecosystem relationships\nOutput: concept_map\n"
-            "User request: Make mind map to organize study content\nOutput: mindmap\n"
-            "User request: Draw Venn diagram comparing three sets\nOutput: venn_diagram\n"
-            "User request: Create fishbone diagram to analyze problem causes\nOutput: fishbone_diagram\n"
-            "User request: Draw flowchart showing operation steps\nOutput: flowchart\n"
-            "User request: Create organizational chart\nOutput: org_chart\n"
-            "User request: Make timeline showing historical events\nOutput: timeline\n"
-            "\nUser request: {user_prompt}\nYour output:"
-        )
-    
-    prompt = PromptTemplate(
-        input_variables=["user_prompt"],
-        template=prompt_text
-    )
-    
-    try:
-        # Refactored: Use RunnableSequence API
-        result = (prompt | llm).invoke({"user_prompt": user_prompt}).strip().lower()
-        
-        logger.info(f"LLM classification response: '{result}'")
-        
-        # First, try exact match with available types
-        for diagram_type in available_types:
-            if diagram_type == result:
-                logger.info(f"LLM classified as: {diagram_type}")
-                return diagram_type
-        
-        # If no exact match, try to extract from common variations
-        result_clean = result.replace(" ", "_").replace("-", "_")
-        for diagram_type in available_types:
-            if diagram_type == result_clean:
-                logger.info(f"LLM classified as (cleaned): {diagram_type}")
-                return diagram_type
-        
-        # If still no match, try to infer from the response content
-        if "double" in result and "bubble" in result:
-            logger.info("LLM response suggests double_bubble_map")
-            return "double_bubble_map"
-        elif "bubble" in result:
-            logger.info("LLM response suggests bubble_map")
-            return "bubble_map"
-        elif "bridge" in result:
-            logger.info("LLM response suggests bridge_map")
-            return "bridge_map"
-        elif "circle" in result:
-            logger.info("LLM response suggests circle_map")
-            return "circle_map"
-        elif "flow" in result:
-            logger.info("LLM response suggests flow_map")
-            return "flow_map"
-        elif "tree" in result:
-            logger.info("LLM response suggests tree_map")
-            return "tree_map"
-        elif "multi" in result and "flow" in result:
-            logger.info("LLM response suggests multi_flow_map")
-            return "multi_flow_map"
-        elif "brace" in result:
-            logger.info("LLM response suggests brace_map")
-            return "brace_map"
-        elif "concept" in result:
-            logger.info("LLM response suggests concept_map")
-            return "concept_map"
-        elif "mind" in result:
-            logger.info("LLM response suggests mindmap")
-            return "mindmap"
-        
-        # Only if LLM completely fails, use fallback logic
-        logger.warning(f"LLM classification failed to match any type, using fallback logic")
-        if any(word in user_prompt.lower() for word in ["analogy", "analogize", "类比", "桥形图", "桥接图"]):
-            return "bridge_map"
-        elif any(word in user_prompt.lower() for word in ["compare", "vs", "difference", "对比", "比较", "双气泡图", "双泡图"]):
-            return "double_bubble_map"
-        elif any(word in user_prompt.lower() for word in ["describe", "characteristics", "特征", "描述", "气泡图", "单气泡图"]):
-            return "bubble_map"
-        elif any(word in user_prompt.lower() for word in ["define", "context", "定义", "上下文"]):
-            return "circle_map"
-        elif any(word in user_prompt.lower() for word in ["process", "steps", "流程", "步骤", "sequence"]):
-            return "flow_map"
-        elif any(word in user_prompt.lower() for word in ["whole", "part", "整体", "部分", "组成"]):
-            return "brace_map"
-        elif any(word in user_prompt.lower() for word in ["categorize", "classify", "分类", "归类"]):
-            return "tree_map"
-        elif any(word in user_prompt.lower() for word in ["cause", "effect", "原因", "影响", "因果"]):
-            return "multi_flow_map"
-        elif any(word in user_prompt for word in ["复流程图", "多重流程图"]) or any(word in user_prompt.lower() for word in ["multi-flow", "multi flow"]):
-            return "multi_flow_map"
-        elif any(word in user_prompt.lower() for word in ["concept", "relationship", "概念", "关系"]):
-            return "concept_map"
-        elif any(word in user_prompt.lower() for word in ["semantic", "web", "语义", "网络"]):
-            return "semantic_web"
-        elif any(word in user_prompt.lower() for word in ["mind", "organize", "思维", "组织", "整理"]):
-            return "mindmap"
-        elif any(word in user_prompt.lower() for word in ["radial", "径向"]):
-            return "radial_mindmap"
-        elif any(word in user_prompt.lower() for word in ["venn", "overlap", "维恩", "重叠"]):
-            return "venn_diagram"
-        elif any(word in user_prompt.lower() for word in ["fishbone", "ishikawa", "鱼骨", "石川"]):
-            return "fishbone_diagram"
-        elif any(word in user_prompt.lower() for word in ["flowchart", "flow chart", "流程图"]):
-            return "flowchart"
-        elif any(word in user_prompt.lower() for word in ["org", "organization", "组织", "架构"]):
-            return "org_chart"
-        elif any(word in user_prompt.lower() for word in ["timeline", "time line", "时间线", "时间线"]):
-            return "timeline"
-        else:
-            return "bubble_map"  # Default fallback
-            
-    except Exception as e:
-        logger.error(f"LLM classification failed: {e}")
-        logger.info("Using fallback classification due to LLM error")
-        # Fallback classification - only used when LLM completely fails
-        if any(word in user_prompt.lower() for word in ["analogy", "analogize", "类比", "桥形图", "桥接图"]):
-            return "bridge_map"
-        elif any(word in user_prompt.lower() for word in ["compare", "vs", "difference", "对比", "比较", "双气泡图", "双泡图"]):
-            return "double_bubble_map"
-        elif any(word in user_prompt.lower() for word in ["describe", "characteristics", "特征", "描述", "气泡图", "单气泡图"]):
-            return "bubble_map"
-        elif any(word in user_prompt.lower() for word in ["define", "context", "定义", "上下文"]):
-            return "circle_map"
-        elif any(word in user_prompt.lower() for word in ["process", "steps", "流程", "步骤", "sequence"]):
-            return "flow_map"
-        elif any(word in user_prompt.lower() for word in ["whole", "part", "整体", "部分", "组成"]):
-            return "brace_map"
-        elif any(word in user_prompt.lower() for word in ["categorize", "classify", "分类", "归类"]):
-            return "tree_map"
-        elif any(word in user_prompt.lower() for word in ["cause", "effect", "原因", "影响", "因果"]):
-            return "multi_flow_map"
-        elif any(word in user_prompt.lower() for word in ["concept", "relationship", "概念", "关系"]):
-            return "concept_map"
-        elif any(word in user_prompt.lower() for word in ["semantic", "web", "语义", "网络"]):
-            return "semantic_web"
-        elif any(word in user_prompt.lower() for word in ["mind", "organize", "思维", "组织", "整理"]):
-            return "mindmap"
-        elif any(word in user_prompt.lower() for word in ["radial", "径向"]):
-            return "radial_mindmap"
-        elif any(word in user_prompt.lower() for word in ["venn", "overlap", "维恩", "重叠"]):
-            return "venn_diagram"
-        elif any(word in user_prompt.lower() for word in ["fishbone", "ishikawa", "鱼骨", "石川"]):
-            return "fishbone_diagram"
-        elif any(word in user_prompt.lower() for word in ["flowchart", "flow chart", "流程图"]):
-            return "flowchart"
-        elif any(word in user_prompt.lower() for word in ["org", "organization", "组织", "架构"]):
-            return "org_chart"
-        elif any(word in user_prompt.lower() for word in ["timeline", "time line", "时间线", "时间线"]):
-            return "timeline"
-        else:
-            return "bubble_map"
-
-
-# Removed duplicate function - using classify_graph_type_with_llm instead
+# Legacy function removed - using extract_topics_and_styles_from_prompt_qwen instead
 
 
 def generate_graph_spec(user_prompt: str, graph_type: str, language: str = 'zh') -> dict:
@@ -840,96 +503,7 @@ def generate_graph_spec(user_prompt: str, graph_type: str, language: str = 'zh')
         return {"error": f"Unexpected error generating {graph_type}"}
 
 
-def agent_graph_workflow(user_prompt, language='zh'):
-    """
-    Main agent workflow for graph generation (bubble, double bubble, or circle map)
-    Args:
-        user_prompt (str): User's input prompt
-        language (str): Language for processing ('zh' or 'en')
-    Returns:
-        dict: JSON specification for D3.js rendering
-    """
-    logger.info(f"Agent: Starting graph workflow for: {user_prompt}")
-    try:
-        graph_type = classify_graph_type_with_llm(user_prompt, language)
-        logger.info(f"Agent: Classified graph type: {graph_type}")
-        if graph_type == "double_bubble_map":
-            # Step 1: Extract topics using agent
-            topic1, topic2 = extract_topics_with_agent(user_prompt, language)
-            logger.info(f"Agent: Extracted topics: {topic1} vs {topic2}")
-            # Step 2: Generate characteristics using agent
-            spec = generate_characteristics_with_agent(topic1, topic2, language)
-            logger.info(f"Agent: Generated characteristics: {spec}")
-            final_spec = {
-                "left": topic1,
-                "right": topic2,
-                "similarities": spec.get("similarities", []),
-                "left_differences": spec.get("left_differences", []),
-                "right_differences": spec.get("right_differences", [])
-            }
-            # Return JSON specification for D3.js rendering
-            result = final_spec
-            logger.info(f"Agent: Double bubble workflow completed successfully")
-            return result
-        elif graph_type == "circle_map":
-            # circle_map: extract topic and characteristics
-            from langchain.prompts import PromptTemplate
-            prompt_text = (
-                "请从以下用户需求中提取主题，并列出6-10个最重要的特征（可以是名词或形容词，描述主题的性质、组成或状态），输出YAML格式：\n"
-                "topic: <主题>\ncharacteristics:\n  - <特征1>\n  - <特征2>\n  - <特征3>\n  - <特征4>\n  - <特征5>\n  - <特征6>\n用户需求：{user_prompt}\n示例：\n用户需求：画一个关于太阳系的circle map\ntopic: 太阳系\ncharacteristics:\n  - 太阳\n  - 行星\n  - 卫星\n  - 小行星\n  - 彗星\n  - 星云"
-            ) if language == 'zh' else (
-                "Extract the main topic and list 6-10 most important characteristics (nouns or adjectives describing the topic's qualities, components, or states). Output in YAML format:\n"
-                "topic: <topic>\ncharacteristics:\n  - <characteristic1>\n  - <characteristic2>\n  - <characteristic3>\n  - <characteristic4>\n  - <characteristic5>\n  - <characteristic6>\nUser request: {user_prompt}\nExample:\nUser request: Draw a circle map for the solar system\ntopic: Solar System\ncharacteristics:\n  - Sun\n  - Planets\n  - Moons\n  - Asteroids\n  - Comets\n  - Nebula"
-            )
-            prompt = PromptTemplate(
-                input_variables=["user_prompt"],
-                template=prompt_text
-            )
-            yaml_text = (prompt | llm).invoke({"user_prompt": user_prompt})
-            yaml_text_clean = extract_yaml_from_code_block(yaml_text)
-            try:
-                spec = yaml.safe_load(yaml_text_clean)
-                if not spec or "topic" not in spec or "characteristics" not in spec:
-                    raise Exception("YAML parse failed")
-            except Exception as e:
-                logger.error(f"Agent: Circle map YAML parse failed: {e}")
-                spec = {"topic": "主题", "characteristics": ["特征1", "特征2", "特征3", "特征4", "特征5"]}
-            # Return JSON specification for D3.js rendering
-            result = spec
-            logger.info(f"Agent: Circle map workflow completed successfully")
-            return result
-        else:
-            # bubble_map: extract topic and characteristics
-            from langchain.prompts import PromptTemplate
-            prompt_text = (
-                "请从以下用户需求中提取主题，并列出6或8个最重要的特征（必须是形容词，描述主题的性质或状态），均匀分为左右两组，每组3或4个，输出YAML格式：\n"
-                "topic: <主题>\nleft:\n  - <左侧形容词1>\n  - <左侧形容词2>\n  - <左侧形容词3>\n  - <左侧形容词4>\nright:\n  - <右侧形容词1>\n  - <右侧形容词2>\n  - <右侧形容词3>\n  - <右侧形容词4>\n用户需求：{user_prompt}\n示例：\n用户需求：描述一所顶尖大学的气泡图\ntopic: 顶尖大学\nleft:\n  - 国际化\n  - 创新性\n  - 多元化\n  - 竞争激烈\nright:\n  - 学术卓越\n  - 资源丰富\n  - 师资雄厚\n  - 环境优美"
-            ) if language == 'zh' else (
-                "Extract the main topic and list 6 or 8 most important characteristics (they must be adjectives describing the topic's qualities or states), evenly distributed into left and right groups (3 or 4 each). Output in YAML format:\n"
-                "topic: <topic>\nleft:\n  - <left_adjective1>\n  - <left_adjective2>\n  - <left_adjective3>\n  - <left_adjective4>\nright:\n  - <right_adjective1>\n  - <right_adjective2>\n  - <right_adjective3>\n  - <right_adjective4>\nUser request: {user_prompt}\nExample:\nUser request: Bubble map for a top university\ntopic: Top University\nleft:\n  - international\n  - innovative\n  - diverse\n  - competitive\nright:\n  - excellent\n  - resourceful\n  - prestigious\n  - beautiful"
-            )
-            prompt = PromptTemplate(
-                input_variables=["user_prompt"],
-                template=prompt_text
-            )
-            yaml_text = (prompt | llm).invoke({"user_prompt": user_prompt})
-            yaml_text_clean = extract_yaml_from_code_block(yaml_text)
-            try:
-                spec = yaml.safe_load(yaml_text_clean)
-                if not spec or "topic" not in spec or "left" not in spec or "right" not in spec:
-                    raise Exception("YAML parse failed")
-            except Exception as e:
-                logger.error(f"Agent: Bubble map YAML parse failed: {e}")
-                spec = {"topic": "主题", "left": ["特征1", "特征2", "特征3", "特征4"], "right": ["特征5", "特征6", "特征7", "特征8"]}
-            # Return JSON specification for D3.js rendering
-            result = spec
-            logger.info(f"Agent: Bubble map workflow completed successfully")
-            return result
-    except Exception as e:
-        logger.error(f"Agent: Workflow failed: {e}")
-        # Return JSON specification for D3.js rendering
-        result = {"topic": "主题", "characteristics": ["特征1", "特征2", "特征3", "特征4", "特征5"]}
-        return result
+# Legacy function removed - using agent_graph_workflow_with_styles instead
 
 
 # ============================================================================
@@ -1048,18 +622,27 @@ def extract_topics_and_styles_from_prompt_qwen(user_prompt: str, language: str =
 - mindmap: 围绕中心主题组织想法
 - radial_mindmap: 创建径向思维导图结构
 
-# 常用图表 (Common Diagrams)
-- venn_diagram: 显示重叠集合
-- fishbone_diagram: 分析因果关系
-- flowchart: 显示流程过程
-- org_chart: 显示组织结构
-- timeline: 显示时间顺序事件
+
 
 重要区分：
 - 比较/对比 (compare/contrast): 使用 double_bubble_map
 - 类比 (analogy): 使用 bridge_map
 - 概念关系 (concept relationships): 使用 concept_map
 - 思维组织 (idea organization): 使用 mindmap
+
+关键示例：
+- 比较猫和狗 → double_bubble_map
+- 描述太阳系特征 → bubble_map
+- 定义地球在宇宙中的圆圈图 → circle_map
+- 展示水循环过程 → flow_map
+- 分析酒精灯爆炸的复流程图 → multi_flow_map
+- 生成山东师范大学的括号图 → brace_map
+- 动物分类的树形图 → tree_map
+- 心脏像泵一样的桥形图 → bridge_map
+- 教育系统的概念图 → concept_map
+- 创建语义网络 → semantic_web
+- 制作思维导图 → mindmap
+- 绘制径向思维导图 → radial_mindmap
 
 样式偏好包括：
 - colorTheme: 颜色主题 (classic, innovation, colorful, monochromatic, dark, light, print, display)
@@ -1110,18 +693,27 @@ Available diagram types:
 - mindmap: Organize ideas around a central topic
 - radial_mindmap: Create a radial mind map structure
 
-# Common Diagrams
-- venn_diagram: Show overlapping sets
-- fishbone_diagram: Analyze cause and effect
-- flowchart: Show process flow
-- org_chart: Show organizational structure
-- timeline: Show chronological events
+
 
 Important distinctions:
 - Compare/contrast: use double_bubble_map
 - Analogy: use bridge_map
 - Concept relationships: use concept_map
 - Idea organization: use mindmap
+
+Key Examples:
+- Compare cats and dogs → double_bubble_map
+- Describe solar system → bubble_map
+- Define Earth in context → circle_map
+- Show water cycle → flow_map
+- Analyze causes and effects of pollution → multi_flow_map
+- Break down university structure → brace_map
+- Classify animal species → tree_map
+- Heart is like a pump analogy → bridge_map
+- Map education concepts → concept_map
+- Create semantic network → semantic_web
+- Make mind map → mindmap
+- Draw radial mind map → radial_mindmap
 
 Style preferences include:
 - colorTheme: Color theme (classic, innovation, colorful, monochromatic, dark, light, print, display)
@@ -1156,9 +748,7 @@ User request: {{user_prompt}}
         cleaned_result = clean_llm_response(result)
         parsed_result = validate_and_parse_json(cleaned_result)
         
-        # Apply explicit override even if LLM returns a different type
-        explicit = detect_explicit_diagram_intent(user_prompt)
-        
+        # Process LLM response without fallback overrides
         if parsed_result:
             topics = parsed_result.get('topics', [])
             if not isinstance(topics, list):
@@ -1169,8 +759,6 @@ User request: {{user_prompt}}
             diagram_type = parsed_result.get('diagram_type', 'bubble_map')
             if not isinstance(diagram_type, str):
                 diagram_type = 'bubble_map'
-            if explicit:
-                diagram_type = explicit
             return {
                 "topics": topics,
                 "style_preferences": style_preferences,
@@ -1179,58 +767,17 @@ User request: {{user_prompt}}
     except Exception as e:
         logger.error(f"Qwen style extraction failed: {e}")
     
-    # Fallback to hardcoded parser with comprehensive diagram type support
+    # Fallback to simple style extraction with default diagram type
     try:
         from diagram_styles import parse_style_from_prompt
         style_preferences = parse_style_from_prompt(user_prompt)
         
-        # Use the same comprehensive fallback logic as classify_graph_type_with_llm
-        topics = []
-        prompt_lower = user_prompt.lower()
-        
-        # Comprehensive fallback logic matching classify_graph_type_with_llm
-        if any(word in prompt_lower for word in ["analogy", "analogize", "类比", "桥形图", "桥接图"]):
-            diagram_type = "bridge_map"
-        elif any(word in prompt_lower for word in ["compare", "vs", "difference", "对比", "比较", "双气泡图", "双泡图"]):
-            diagram_type = "double_bubble_map"
-        elif any(word in prompt_lower for word in ["describe", "characteristics", "特征", "描述", "气泡图", "单气泡图"]):
-            diagram_type = "bubble_map"
-        elif any(word in prompt_lower for word in ["define", "context", "定义", "上下文"]):
-            diagram_type = "circle_map"
-        elif any(word in prompt_lower for word in ["process", "steps", "流程", "步骤", "sequence"]):
-            diagram_type = "flow_map"
-        elif any(word in prompt_lower for word in ["whole", "part", "整体", "部分", "组成"]):
-            diagram_type = "brace_map"
-        elif any(word in prompt_lower for word in ["categorize", "classify", "分类", "归类"]):
-            diagram_type = "tree_map"
-        elif any(word in user_prompt for word in ["复流程图", "多重流程图"]) or any(word in prompt_lower for word in ["multi-flow", "multi flow"]) or any(word in prompt_lower for word in ["cause", "effect", "原因", "影响", "因果"]):
-            diagram_type = "multi_flow_map"
-        elif any(word in prompt_lower for word in ["concept", "relationship", "概念", "关系"]):
-            diagram_type = "concept_map"
-        elif any(word in prompt_lower for word in ["semantic", "web", "语义", "网络"]):
-            diagram_type = "semantic_web"
-        elif any(word in prompt_lower for word in ["mind", "organize", "思维", "组织", "整理"]):
-            if "radial" in prompt_lower or "径向" in prompt_lower:
-                diagram_type = "radial_mindmap"
-            else:
-                diagram_type = "mindmap"
-        elif any(word in prompt_lower for word in ["venn", "overlap", "维恩", "重叠"]):
-            diagram_type = "venn_diagram"
-        elif any(word in prompt_lower for word in ["fishbone", "ishikawa", "鱼骨", "石川"]):
-            diagram_type = "fishbone_diagram"
-        elif any(word in prompt_lower for word in ["flowchart", "flow chart", "流程图"]):
-            diagram_type = "flowchart"
-        elif any(word in prompt_lower for word in ["org", "organization", "组织", "架构"]):
-            diagram_type = "org_chart"
-        elif any(word in prompt_lower for word in ["timeline", "time line", "时间线", "时间线"]):
-            diagram_type = "timeline"
-        else:
-            diagram_type = "bubble_map"  # Default fallback
-        
+        # If LLM fails, default to bubble_map (most versatile thinking map)
+        # No hardcoded keyword logic - keep it clean and professional
         return {
-            "topics": topics,
+            "topics": [],
             "style_preferences": style_preferences,
-            "diagram_type": diagram_type
+            "diagram_type": "bubble_map"
         }
     except Exception as e:
         logger.error(f"Fallback style extraction failed: {e}")

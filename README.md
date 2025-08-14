@@ -1,6 +1,6 @@
 # MindGraph - AI-Powered Data Visualization Generator
 
-[![Version](https://img.shields.io/badge/version-2.3.8-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.4.0-blue.svg)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Flask](https://img.shields.io/badge/Flask-3.0+-green.svg)](https://flask.palletsprojects.com/)
 [![D3.js](https://img.shields.io/badge/D3.js-7.0+-orange.svg)](https://d3js.org/)
@@ -45,9 +45,23 @@
    ```
 
 2. **Install Python dependencies**
+   
+   **Option 1: Full Installation (Recommended for Development)**
    ```bash
    pip install -r requirements.txt
    ```
+   
+   **Option 2: Production Only (Minimal Dependencies)**
+   ```bash
+   pip install Flask>=3.1.1 langchain>=0.3.27 playwright>=1.45.0 Pillow>=10.4.0 requests>=2.32.0 aiohttp>=3.9.0 PyYAML>=6.0.1 python-dotenv>=1.0.1 nest_asyncio>=1.6.0 pyee>=13.0.0 psutil>=6.0.0 typing-extensions>=4.12.0 pydantic>=2.10.0 structlog>=24.1.0 cryptography>=42.0.0
+   ```
+   
+   **Option 3: Minimal Core (Basic Functionality)**
+   ```bash
+   pip install Flask langchain playwright Pillow
+   ```
+   
+   See [INSTALLATION.md](INSTALLATION.md) for detailed installation options.
 
 3. **Set up environment variables**
    ```bash

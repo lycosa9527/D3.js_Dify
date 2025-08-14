@@ -1,107 +1,93 @@
 from flask import Blueprint, render_template
 import logging
-from url_config import get_web_urls
+from functools import wraps
+from url_config import (
+    WEB_INDEX, WEB_DEBUG, WEB_STYLE_DEMO, WEB_TEST_STYLE_MANAGER,
+    WEB_TEST_PNG_GENERATION, WEB_SIMPLE_TEST, WEB_BROWSER_TEST,
+    WEB_BUBBLE_MAP_TEST, WEB_DEBUG_THEME_CONVERSION, WEB_SIMPLE_THEME_TEST,
+    WEB_TIMING_STATS
+)
 
 web = Blueprint('web', __name__)
 logger = logging.getLogger(__name__)
 
-# Get URL configuration
-URLS = get_web_urls()
 
-@web.route('/')
+def handle_template_errors(template_name):
+    """Decorator to handle template rendering errors consistently."""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                return render_template(template_name)
+            except Exception as e:
+                route_path = func.__name__.replace('_', '-')
+                logger.error(f"/{route_path} route failed: {e}", exc_info=True)
+                return "An unexpected error occurred. Please try again later.", 500
+        return wrapper
+    return decorator
+
+
+@web.route(WEB_INDEX)
+@handle_template_errors('index.html')
 def index():
-    try:
-        return render_template('index.html')
-    except Exception as e:
-        logger.error(f"/ route failed: {e}", exc_info=True)
-        return "An unexpected error occurred. Please try again later.", 500
+    pass
 
-@web.route('/debug')
+
+@web.route(WEB_DEBUG)
+@handle_template_errors('debug.html')
 def debug():
-    try:
-        return render_template('debug.html')
-    except Exception as e:
-        logger.error(f"/debug route failed: {e}", exc_info=True)
-        return "An unexpected error occurred. Please try again later.", 500
+    pass
 
-@web.route('/style-demo')
+
+@web.route(WEB_STYLE_DEMO)
+@handle_template_errors('style-demo.html')
 def style_demo():
-    try:
-        return render_template('style-demo.html')
-    except Exception as e:
-        logger.error(f"/style-demo route failed: {e}", exc_info=True)
-        return "An unexpected error occurred. Please try again later.", 500
+    pass
 
-@web.route('/test-style-manager')
+
+@web.route(WEB_TEST_STYLE_MANAGER)
+@handle_template_errors('test_style_manager.html')
 def test_style_manager():
-    try:
-        return render_template('test_style_manager.html')
-    except Exception as e:
-        logger.error(f"/test-style-manager route failed: {e}", exc_info=True)
-        return "An unexpected error occurred. Please try again later.", 500
+    pass
 
-@web.route('/test-png-generation')
+
+@web.route(WEB_TEST_PNG_GENERATION)
+@handle_template_errors('test_png_generation.html')
 def test_png_generation():
-    try:
-        return render_template('test_png_generation.html')
-    except Exception as e:
-        logger.error(f"/test-png-generation route failed: {e}", exc_info=True)
-        return "An unexpected error occurred. Please try again later.", 500
+    pass
 
-@web.route('/simple-test')
+
+@web.route(WEB_SIMPLE_TEST)
+@handle_template_errors('simple_test.html')
 def simple_test():
-    try:
-        return render_template('simple_test.html')
-    except Exception as e:
-        logger.error(f"/simple-test route failed: {e}", exc_info=True)
-        return "An unexpected error occurred. Please try again later.", 500
+    pass
 
-@web.route('/browser-test')
+
+@web.route(WEB_BROWSER_TEST)
+@handle_template_errors('test_browser_rendering.html')
 def browser_test():
-    try:
-        return render_template('test_browser_rendering.html')
-    except Exception as e:
-        logger.error(f"/browser-test route failed: {e}", exc_info=True)
-        return "An unexpected error occurred. Please try again later.", 500
+    pass
 
-@web.route('/bubble-map-test')
+
+@web.route(WEB_BUBBLE_MAP_TEST)
+@handle_template_errors('test_bubble_map_styling.html')
 def bubble_map_test():
-    try:
-        return render_template('test_bubble_map_styling.html')
-    except Exception as e:
-        logger.error(f"/bubble-map-test route failed: {e}", exc_info=True)
-        return "An unexpected error occurred. Please try again later.", 500
+    pass
 
 
-
-
-
-
-
-
-
-@web.route('/debug-theme-conversion')
+@web.route(WEB_DEBUG_THEME_CONVERSION)
+@handle_template_errors('debug_theme_conversion.html')
 def debug_theme_conversion():
-    try:
-        return render_template('debug_theme_conversion.html')
-    except Exception as e:
-        logger.error(f"/debug-theme-conversion route failed: {e}", exc_info=True)
-        return "An unexpected error occurred. Please try again later.", 500
+    pass
 
-@web.route('/simple-theme-test')
+
+@web.route(WEB_SIMPLE_THEME_TEST)
+@handle_template_errors('simple_theme_test.html')
 def simple_theme_test():
-    try:
-        return render_template('simple_theme_test.html')
-    except Exception as e:
-        logger.error(f"/simple-theme-test route failed: {e}", exc_info=True)
-        return "An unexpected error occurred. Please try again later.", 500
+    pass
 
-@web.route('/timing-stats')
+
+@web.route(WEB_TIMING_STATS)
+@handle_template_errors('timing_stats.html')
 def timing_stats():
-    try:
-        return render_template('timing_stats.html')
-    except Exception as e:
-        logger.error(f"/timing-stats route failed: {e}", exc_info=True)
-        return "An unexpected error occurred. Please try again later.", 500
-
- 
+    pass

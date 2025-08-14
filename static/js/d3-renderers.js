@@ -3313,9 +3313,7 @@ function renderBraceMap(spec, theme = null, dimensions = null) {
         return;
     }
     
-    // Use provided theme and dimensions or defaults
-    const baseWidth = dimensions?.baseWidth || 1000;
-    const baseHeight = dimensions?.baseHeight || 600;
+    // Use provided dimensions only - no hardcoded defaults
     const padding = dimensions?.padding || 40;
     
     // Get complete theme using robust style manager
@@ -3457,10 +3455,16 @@ function renderBraceMap(spec, theme = null, dimensions = null) {
         }
     });
     
-    // Adjust canvas size based on content
-    const finalHeight = Math.max(baseHeight, totalHeight + padding * 2);
-    const rightPadding = Math.min(padding, 8); // keep right buffer small
-    const contentWidth = runningX + rightPadding; // sum of all columns + small right padding
+    // Calculate canvas size based purely on content with proper text padding
+    const finalHeight = totalHeight + padding * 2;
+    
+    // For center-anchored text, we need right padding equal to half the maximum subpart width + buffer
+    // Since subparts are the rightmost elements and positioned at column5X with center anchoring,
+    // they extend maxSubpartWidth/2 beyond their center position
+    const textExtensionPadding = maxSubpartWidth / 2 + 20; // Half width + buffer for center-anchored text
+    const rightPadding = Math.max(50, textExtensionPadding); // Ensure adequate padding
+    
+    const contentWidth = runningX + rightPadding; // sum of all columns + proper right padding
     const finalWidth = contentWidth;
     
     // Create SVG

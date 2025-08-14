@@ -11,8 +11,9 @@
 #
 # This Docker Compose configuration sets up a production-ready environment
 # with comprehensive logging, monitoring, and resource management.
+# yaml-language-server: $schema=https://raw.githubusercontent.com/compose-spec/compose-spec/master/schema/compose-spec.json
 
-version: '3.8'
+version: '3.9'
 
 services:
   # Main MindGraph application service

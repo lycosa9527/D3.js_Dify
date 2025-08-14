@@ -669,12 +669,7 @@ def classify_diagram_type_for_development(user_prompt: str, language: str = 'en'
         "mindmap": "Organize ideas around a central topic",
         "radial_mindmap": "Create a radial mind map structure",
         
-        # Common Diagrams
-        "venn_diagram": "Show overlapping sets",
-        "fishbone_diagram": "Analyze cause and effect",
-        "flowchart": "Show process flow",
-        "org_chart": "Show organizational structure",
-        "timeline": "Show chronological events"
+        # Removed Common Diagrams - only using thinking maps, concept maps, mind maps
     }
     
     if language == 'zh':
@@ -802,10 +797,22 @@ Your output:
             return "double_bubble_map"
         elif any(word in user_prompt.lower() for word in ["describe", "characteristics", "特征", "描述", "气泡图", "单气泡图"]):
             return "bubble_map"
+        elif any(word in user_prompt.lower() for word in ["define", "context", "定义", "上下文", "圆圈图", "圈图"]):
+            return "circle_map"
         elif any(word in user_prompt.lower() for word in ["process", "steps", "流程", "步骤"]):
             return "flow_map"
-        elif any(word in user_prompt.lower() for word in ["cause", "effect", "原因", "影响"]):
+        elif any(word in user_prompt.lower() for word in ["cause", "effect", "原因", "影响", "复流程图"]):
             return "multi_flow_map"
+        elif any(word in user_prompt.lower() for word in ["whole", "part", "整体", "部分", "组成", "括号图", "花括号"]):
+            return "brace_map"
+        elif any(word in user_prompt.lower() for word in ["classify", "categorize", "分类", "归类", "树形图", "树状图"]):
+            return "tree_map"
+        elif any(word in user_prompt.lower() for word in ["concept", "relationship", "概念", "关系", "概念图"]):
+            return "concept_map"
+        elif any(word in user_prompt.lower() for word in ["semantic", "network", "语义", "网络", "语义网络"]):
+            return "semantic_web"
+        elif any(word in user_prompt.lower() for word in ["radial", "径向", "径向思维导图"]):
+            return "radial_mindmap"
         else:
             return "bubble_map"  # Default fallback
             
@@ -819,6 +826,22 @@ Your output:
             return "double_bubble_map"
         elif any(word in user_prompt.lower() for word in ["describe", "characteristics", "特征", "描述", "气泡图", "单气泡图"]):
             return "bubble_map"
+        elif any(word in user_prompt.lower() for word in ["define", "context", "定义", "上下文", "圆圈图", "圈图"]):
+            return "circle_map"
+        elif any(word in user_prompt.lower() for word in ["process", "steps", "流程", "步骤"]):
+            return "flow_map"
+        elif any(word in user_prompt.lower() for word in ["cause", "effect", "原因", "影响", "复流程图"]):
+            return "multi_flow_map"
+        elif any(word in user_prompt.lower() for word in ["whole", "part", "整体", "部分", "组成", "括号图", "花括号"]):
+            return "brace_map"
+        elif any(word in user_prompt.lower() for word in ["classify", "categorize", "分类", "归类", "树形图", "树状图"]):
+            return "tree_map"
+        elif any(word in user_prompt.lower() for word in ["concept", "relationship", "概念", "关系", "概念图"]):
+            return "concept_map"
+        elif any(word in user_prompt.lower() for word in ["semantic", "network", "语义", "网络", "语义网络"]):
+            return "semantic_web"
+        elif any(word in user_prompt.lower() for word in ["radial", "径向", "径向思维导图"]):
+            return "radial_mindmap"
         else:
             return "bubble_map"
 

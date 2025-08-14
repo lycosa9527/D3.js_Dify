@@ -34,8 +34,9 @@ WORKDIR /app
 COPY requirements.txt ./
 
 # Install Python dependencies with optimized settings
+# Install only production dependencies for smaller container size
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir Flask>=3.1.1 langchain>=0.3.27 playwright>=1.45.0 Pillow>=10.4.0 requests>=2.32.0 aiohttp>=3.9.0 PyYAML>=6.0.1 python-dotenv>=1.0.1 nest_asyncio>=1.6.0 pyee>=13.0.0 psutil>=6.0.0 typing-extensions>=4.12.0 pydantic>=2.10.0 structlog>=24.1.0 cryptography>=42.0.0
 
 # Install Playwright Chrome browser for PNG generation
 # Only installs Chromium to save space and build time

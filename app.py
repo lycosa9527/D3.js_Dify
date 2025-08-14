@@ -238,6 +238,30 @@ app.register_blueprint(api)
 app.register_blueprint(web)
 
 # ============================================================================
+# BACKWARD COMPATIBILITY ROUTES
+# ============================================================================
+
+@app.route('/generate_png', methods=['POST'])
+def generate_png_compatibility():
+    """
+    Backward compatibility route for /generate_png (without /api prefix).
+    Redirects to the actual API endpoint.
+    """
+    # Import the function from api_routes to avoid duplication
+    from api_routes import generate_png
+    return generate_png()
+
+@app.route('/generate_graph', methods=['POST'])
+def generate_graph_compatibility():
+    """
+    Backward compatibility route for /generate_graph (without /api prefix).
+    Redirects to the actual API endpoint.
+    """
+    # Import the function from api_routes to avoid duplication
+    from api_routes import generate_graph
+    return generate_graph()
+
+# ============================================================================
 # APPLICATION STATUS AND HEALTH CHECKS
 # ============================================================================
 
