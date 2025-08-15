@@ -263,6 +263,17 @@ def generate_graph():
                     logger.warning(f"ConceptMapAgent enhancement skipped: {agent_result.get('error')}")
             except Exception as e:
                 logger.error(f"Error enhancing concept_map spec: {e}")
+        elif diagram_type == 'mindmap' or diagram_type == 'radial_mindmap':
+            try:
+                from mind_map_agent import MindMapAgent
+                m_agent = MindMapAgent()
+                agent_result = m_agent.enhance_spec(spec)
+                if agent_result.get('success') and 'spec' in agent_result:
+                    spec = agent_result['spec']
+                else:
+                    logger.warning(f"MindMapAgent enhancement skipped: {agent_result.get('error')}")
+            except Exception as e:
+                logger.error(f"Error enhancing mindmap spec: {e}")
 
         # NOW validate the enhanced spec (after agent enhancement)
         from graph_specs import DIAGRAM_VALIDATORS
@@ -280,7 +291,7 @@ def generate_graph():
         # Calculate optimized dimensions
         dimensions = config.get_d3_dimensions()
         # Use agent-recommended dimensions if provided
-        if diagram_type in ('multi_flow_map', 'flow_map', 'tree_map', 'concept_map') and isinstance(spec, dict) and spec.get('_recommended_dimensions'):
+        if diagram_type in ('multi_flow_map', 'flow_map', 'tree_map', 'concept_map', 'mindmap', 'radial_mindmap') and isinstance(spec, dict) and spec.get('_recommended_dimensions'):
             rd = spec['_recommended_dimensions']
             try:
                 dimensions = {
@@ -441,6 +452,22 @@ def generate_png():
                 logger.warning(f"ConceptMapAgent enhancement skipped: {agent_result.get('error')}")
         except Exception as e:
             logger.error(f"Error enhancing concept_map spec: {e}")
+    elif graph_type == 'mindmap' or graph_type == 'radial_mindmap':
+        # Check if spec is already enhanced by agent (has _layout and _recommended_dimensions)
+        if not (isinstance(spec, dict) and spec.get('_layout') and spec.get('_recommended_dimensions')):
+            # Only enhance if not already enhanced
+            try:
+                from mind_map_agent import MindMapAgent
+                m_agent = MindMapAgent()
+                agent_result = m_agent.enhance_spec(spec)
+                if agent_result.get('success') and 'spec' in agent_result:
+                    spec = agent_result['spec']
+                else:
+                    logger.warning(f"MindMapAgent enhancement skipped: {agent_result.get('error')}")
+            except Exception as e:
+                logger.error(f"Error enhancing mindmap spec: {e}")
+        else:
+            logger.info(f"Mind map spec already enhanced, skipping agent call")
     
     # Check if spec has required structure for rendering
     if not spec or isinstance(spec, dict) and spec.get('error'):

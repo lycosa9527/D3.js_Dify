@@ -620,7 +620,6 @@ def extract_topics_and_styles_from_prompt_qwen(user_prompt: str, language: str =
 
 # 思维导图 (Mind Maps)
 - mindmap: 围绕中心主题组织想法
-- radial_mindmap: 创建径向思维导图结构
 
 
 
@@ -652,8 +651,7 @@ def extract_topics_and_styles_from_prompt_qwen(user_prompt: str, language: str =
 - backgroundTheme: 背景主题 (dark, light)
 
 请以JSON格式输出：
-{{{{
-    "topics": ["主题1", "主题2"],
+{{{{"topics": ["主题1", "主题2"],
     "style_preferences": {{{{
         "colorTheme": "主题名称",
         "primaryColor": "颜色",
@@ -723,8 +721,7 @@ Style preferences include:
 - backgroundTheme: Background theme (dark, light)
 
 Please output in JSON format:
-{{{{
-    "topics": ["topic1", "topic2"],
+{{{{"topics": ["topic1", "topic2"],
     "style_preferences": {{{{
         "colorTheme": "theme_name",
         "primaryColor": "color",

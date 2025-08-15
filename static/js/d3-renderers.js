@@ -1581,10 +1581,28 @@ function renderMindMap(spec, theme = null, dimensions = null) {
         return;
     }
     
-    // Use provided theme and dimensions or defaults
-    const baseWidth = dimensions?.baseWidth || 700;
-    const baseHeight = dimensions?.baseHeight || 500;
-    const padding = dimensions?.padding || 40;
+    // Check for recommended dimensions from Python agent first, then use provided dimensions or defaults
+    let baseWidth, baseHeight, padding;
+    
+    if (spec._recommended_dimensions) {
+        // Use dimensions calculated by Python agent
+        baseWidth = spec._recommended_dimensions.width;
+        baseHeight = spec._recommended_dimensions.height;
+        padding = spec._recommended_dimensions.padding;
+        console.log('Using Python agent recommended dimensions:', {baseWidth, baseHeight, padding});
+    } else if (dimensions) {
+        // Use provided dimensions
+        baseWidth = dimensions.baseWidth || 700;
+        baseHeight = dimensions.baseHeight || 500;
+        padding = dimensions.padding || 40;
+        console.log('Using provided dimensions:', {baseWidth, baseHeight, padding});
+    } else {
+        // Use defaults
+        baseWidth = 700;
+        baseHeight = 500;
+        padding = 40;
+        console.log('Using default dimensions:', {baseWidth, baseHeight, padding});
+    }
     
     // Get complete theme using robust style manager
     let THEME;
@@ -1622,39 +1640,295 @@ function renderMindMap(spec, theme = null, dimensions = null) {
         };
     }
     
-    // Apply background if specified
-    if (theme && theme.background) {
-        d3.select('#d3-container').style('background-color', theme.background);
-    }
+    // Apply background to container and ensure it fills the entire area
+    const containerBackground = theme?.background || '#f5f5f5'; // Light grey background
+    d3.select('#d3-container')
+        .style('background-color', containerBackground)
+        .style('width', '100%')
+        .style('height', '100%')
+        .style('min-height', `${baseHeight}px`);
     
     const width = baseWidth;
     const height = baseHeight;
-    var svg = d3.select('#d3-container').append('svg').attr('width', width).attr('height', height);
+    var svg = d3.select('#d3-container').append('svg')
+        .attr('width', width)
+        .attr('height', height)
+        .attr('viewBox', `0 0 ${width} ${height}`)
+        .attr('preserveAspectRatio', 'xMidYMid meet')
+        .style('background-color', '#f5f5f5'); // Light grey background (better than white)
     
-    // Draw central topic
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const centralRadius = getTextRadius(spec.topic, THEME.fontCentralTopic, 20);
+    // Check if we have enhanced layout data from the Python agent
+    if (spec._layout && spec._layout.algorithm === 'clockwise_radial') {
+        // Use enhanced layout from Python agent - don't draw topic here
+        const centerX = width / 2;
+        const centerY = height / 2;
+        renderEnhancedMindMap(spec._layout, svg, centerX, centerY, THEME);
+    } else {
+        // Fallback to basic layout - draw central topic here
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const centralRadius = getTextRadius(spec.topic, THEME.fontCentralTopic, 20);
+        
+        svg.append('circle')
+            .attr('cx', centerX)
+            .attr('cy', centerY)
+            .attr('r', centralRadius)
+            .attr('fill', THEME.centralTopicFill)
+            .attr('stroke', THEME.centralTopicStroke)
+            .attr('stroke-width', THEME.centralTopicStrokeWidth);
+        
+        svg.append('text')
+            .attr('x', centerX)
+            .attr('y', centerY)
+            .attr('text-anchor', 'middle')
+            .attr('dominant-baseline', 'middle')
+            .attr('fill', THEME.centralTopicText)
+            .attr('font-size', THEME.fontCentralTopic)
+            .attr('font-weight', 'bold')
+            .text(spec.topic);
+        
+        renderBasicMindMap(spec, svg, centerX, centerY, THEME);
+    }
     
-    svg.append('circle')
-        .attr('cx', centerX)
-        .attr('cy', centerY)
-        .attr('r', centralRadius)
-        .attr('fill', THEME.centralTopicFill)
-        .attr('stroke', THEME.centralTopicStroke)
-        .attr('stroke-width', THEME.centralTopicStrokeWidth);
+    // Watermark
+    addWatermark(svg, theme);
+}
+
+// Helper function to render enhanced mind map with rectangular subtopic nodes
+function renderEnhancedMindMap(spec, svg, centerX, centerY, THEME) {
+    const positions = spec.positions;
+    const connections = spec.connections || [];
     
-    svg.append('text')
-        .attr('x', centerX)
-        .attr('y', centerY)
-        .attr('text-anchor', 'middle')
-        .attr('dominant-baseline', 'middle')
-        .attr('fill', THEME.centralTopicText)
-        .attr('font-size', THEME.fontCentralTopic)
-        .attr('font-weight', 'bold')
-        .text(spec.topic);
+    // First pass: Draw all connecting lines (so they appear behind nodes)
+    // Use explicit connections if available, otherwise infer from positions
+    if (connections.length > 0) {
+        // Use explicit connections from the spec
+        connections.forEach(conn => {
+            let fromPos, toPos;
+            
+            if (conn.from.type === 'topic') {
+                fromPos = positions['topic'];
+            } else if (conn.from.type === 'branch') {
+                fromPos = positions[`branch_${conn.branch_index}`];
+            }
+            
+            if (conn.to.type === 'branch') {
+                toPos = positions[`branch_${conn.branch_index}`];
+            } else if (conn.to.type === 'child') {
+                // For child connections, we need both branch_index and child_index
+                if (conn.child_index !== undefined) {
+                    toPos = positions[`child_${conn.branch_index}_${conn.child_index}`];
+                }
+            }
+            
+            if (fromPos && toPos) {
+                const fromX = centerX + fromPos.x;
+                const fromY = centerY + fromPos.y;
+                // Use adaptive fallback widths based on text length if width is not provided
+                const fromWidth = fromPos.width || (fromPos.text ? Math.max(80, fromPos.text.length * 8) : 100);
+                const fromHeight = fromPos.height || 50;
+                
+                const toX = centerX + toPos.x;
+                const toY = centerY + toPos.y;
+                const toWidth = toPos.width || (toPos.text ? Math.max(80, toPos.text.length * 8) : 100);
+                const toHeight = toPos.height || 40;
+                
+                // Calculate line endpoints to stop at node boundaries
+                const dx = toX - fromX;
+                const dy = toY - fromY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist > 0) {
+                    // Ensure lines start and end at node boundaries, not inside nodes
+                    const lineStartX = fromX + (dx / dist) * (fromWidth / 2);
+                    const lineStartY = fromY + (dy / dist) * (fromHeight / 2);
+                    const lineEndX = toX - (dx / dist) * (toWidth / 2);
+                    const lineEndY = toY - (dy / dist) * (toHeight / 2);
+                    
+                    svg.append('line')
+                        .attr('x1', lineStartX)
+                        .attr('y1', lineStartY)
+                        .attr('x2', lineEndX)
+                        .attr('y2', lineEndY)
+                        .attr('stroke', conn.stroke_color || THEME.linkStroke || '#888')
+                        .attr('stroke-width', conn.stroke_width || 2);
+                }
+            }
+        });
+    } else {
+        // Fallback: Infer connections from positions (for backward compatibility)
+        Object.keys(positions).forEach(key => {
+            const pos = positions[key];
+            
+            if (pos.node_type === 'branch') {
+                // Draw connecting line from center to branch
+                const branchX = centerX + pos.x;
+                const branchY = centerY + pos.y;
+                // Use adaptive fallback widths based on text length if width is not provided
+                const branchWidth = pos.width || (pos.text ? Math.max(100, pos.text.length * 10) : 100);
+                const branchHeight = pos.height || 50;
+                
+                const dx = branchX - centerX;
+                const dy = branchY - centerY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist > 0) {
+                    // Calculate line endpoints to stop at node boundaries
+                    // Use actual topic node dimensions instead of hardcoded 60px
+                    const topicPos = positions['topic'];
+                    const topicWidth = topicPos ? (topicPos.width || 120) : 120;
+                    const topicHeight = topicPos ? (topicPos.height || 60) : 60;
+                    
+                    const lineStartX = centerX + (dx / dist) * (topicWidth / 2);
+                    const lineStartY = centerY + (dy / dist) * (topicHeight / 2);
+                    const lineEndX = branchX - (dx / dist) * (branchWidth / 2);
+                    const lineEndY = branchY - (dy / dist) * (branchHeight / 2);
+                    
+                    svg.append('line')
+                        .attr('x1', lineStartX)
+                        .attr('y1', lineStartY)
+                        .attr('x2', lineEndX)
+                        .attr('y2', lineEndY)
+                        .attr('stroke', THEME.linkStroke || '#888')
+                        .attr('stroke-width', 2);
+                }
+            } else if (pos.node_type === 'child') {
+                // Draw connecting line from branch to child
+                const childX = centerX + pos.x;
+                const childY = centerY + pos.y;
+                // Use adaptive fallback widths based on text length if width is not provided
+                const childWidth = pos.width || (pos.text ? Math.max(80, pos.text.length * 8) : 100);
+                const childHeight = pos.height || 40;
+                
+                const branchKey = `branch_${pos.branch_index}`;
+                if (positions[branchKey]) {
+                    const branchPos = positions[branchKey];
+                    const branchX = centerX + branchPos.x;
+                    const branchY = centerY + branchPos.y;
+                    // Use adaptive fallback widths based on text length if width is not provided
+                    const branchWidth = branchPos.width || (branchPos.text ? Math.max(100, branchPos.text.length * 10) : 100);
+                    const branchHeight = branchPos.height || 50;
+                    
+                    // Calculate line endpoints to stop at node boundaries
+                    const dx = childX - branchX;
+                    const dy = childY - branchY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist > 0) {
+                        const lineStartX = branchX + (dx / dist) * (branchWidth / 2);
+                        const lineStartY = branchY + (dy / dist) * (branchHeight / 2);
+                        const lineEndX = childX - (dx / dist) * (childWidth / 2);
+                        const lineEndY = childY - (dy / dist) * (childHeight / 2);
+                        
+                        svg.append('line')
+                            .attr('x1', lineStartX)
+                            .attr('y1', lineStartY)
+                            .attr('x2', lineEndX)
+                            .attr('y2', lineEndY)
+                            .attr('stroke', THEME.linkStroke || '#ccc')
+                            .attr('stroke-width', 1);
+                    }
+                }
+            }
+        });
+    }
     
-    // Draw branches (simplified implementation)
+    // Second pass: Draw all nodes (so they appear on top of lines)
+    Object.keys(positions).forEach(key => {
+        const pos = positions[key];
+        
+        if (pos.node_type === 'topic') {
+            // Draw central topic node (circle)
+            const topicX = centerX + pos.x;
+            const topicY = centerY + pos.y;
+            const topicWidth = pos.width || 120;
+            const topicHeight = pos.height || 60;
+            
+            // Draw circular topic node - make it larger for better visual balance and deeper blue
+            const topicRadius = Math.max(topicWidth, topicHeight) / 2 * 1.5; // 50% larger
+            
+            svg.append('circle')
+                .attr('cx', topicX)
+                .attr('cy', topicY)
+                .attr('r', topicRadius)
+                .attr('fill', '#1976d2')  // Deeper blue to distinguish from subtopics
+                .attr('stroke', '#0d47a1')  // Darker blue border
+                .attr('stroke-width', 2);
+            
+            svg.append('text')
+                .attr('x', topicX)
+                .attr('y', topicY)
+                .attr('text-anchor', 'middle')
+                .attr('dominant-baseline', 'middle')
+                .attr('fill', '#ffffff')  // White text for better contrast against deep blue
+                .attr('font-size', THEME.fontCentral || 18)
+                .attr('font-weight', 'bold')
+                .text(pos.text || 'Topic');
+                
+        } else if (pos.node_type === 'branch') {
+            // Draw branch node (rectangle)
+            const branchX = centerX + pos.x;
+            const branchY = centerY + pos.y;
+            // Use adaptive fallback widths based on text length if width is not provided
+            const branchWidth = pos.width || (pos.text ? Math.max(100, pos.text.length * 10) : 100);
+            const branchHeight = pos.height || 50;
+            
+            // Draw rectangular node
+            svg.append('rect')
+                .attr('x', branchX - branchWidth / 2)
+                .attr('y', branchY - branchHeight / 2)
+                .attr('width', branchWidth)
+                .attr('height', branchHeight)
+                .attr('rx', 8) // Rounded corners
+                .attr('ry', 8)
+                .attr('fill', THEME.mainBranchFill || '#a7c7e7')
+                .attr('stroke', THEME.mainBranchStroke || '#4e79a7')
+                .attr('stroke-width', THEME.mainBranchStrokeWidth || 2);
+            
+            svg.append('text')
+                .attr('x', branchX)
+                .attr('y', branchY)
+                .attr('text-anchor', 'middle')
+                .attr('dominant-baseline', 'middle')
+                .attr('fill', THEME.mainBranchText || '#333')
+                .attr('font-size', THEME.fontMainBranch || 16)
+                .text(pos.text || 'Branch');
+                
+        } else if (pos.node_type === 'child') {
+            // Draw child node (rectangle) for subtopics
+            const childX = centerX + pos.x;
+            const childY = centerY + pos.y;
+            // Use adaptive fallback widths based on text length if width is not provided
+            const childWidth = pos.width || (pos.text ? Math.max(80, pos.text.length * 8) : 100);
+            const childHeight = pos.height || 40;
+            
+            // Draw rectangular node
+            svg.append('rect')
+                .attr('x', childX - childWidth / 2)
+                .attr('y', childY - childHeight / 2)
+                .attr('width', childWidth)
+                .attr('height', childHeight)
+                .attr('rx', 6) // Rounded corners
+                .attr('ry', 6)
+                .attr('fill', THEME.childNodeFill || '#f5f5f5')
+                .attr('stroke', THEME.childNodeStroke || '#cccccc')
+                .attr('stroke-width', 1);
+            
+            svg.append('text')
+                .attr('x', childX)
+                .attr('y', childY)
+                .attr('text-anchor', 'middle')
+                .attr('dominant-baseline', 'middle')
+                .attr('fill', THEME.childNodeText || '#333')
+                .attr('font-size', THEME.fontChild || 14)
+                .text(pos.text || 'Child');
+        }
+    });
+}
+
+// Helper function to render basic mind map (fallback)
+function renderBasicMindMap(spec, svg, centerX, centerY, THEME) {
+    // First pass: Draw all connecting lines
     const branchCount = spec.children.length;
     const angleStep = (2 * Math.PI) / branchCount;
     const branchRadius = 80;
@@ -1663,47 +1937,58 @@ function renderMindMap(spec, theme = null, dimensions = null) {
         const angle = i * angleStep;
         const branchX = centerX + branchRadius * Math.cos(angle);
         const branchY = centerY + branchRadius * Math.sin(angle);
-        const branchNodeRadius = getTextRadius(child.label, THEME.fontMainBranch, 15);
-        
-        // Draw branch node
-        svg.append('circle')
-            .attr('cx', branchX)
-            .attr('cy', branchY)
-            .attr('r', branchNodeRadius)
-            .attr('fill', THEME.mainBranchFill)
-            .attr('stroke', THEME.mainBranchStroke)
-            .attr('stroke-width', THEME.mainBranchStrokeWidth);
-        
-        svg.append('text')
-            .attr('x', branchX)
-            .attr('y', branchY)
-            .attr('text-anchor', 'middle')
-            .attr('dominant-baseline', 'middle')
-            .attr('fill', THEME.mainBranchText)
-            .attr('font-size', THEME.fontMainBranch)
-            .text(child.label);
+        const branchWidth = getTextRadius(child.label, THEME.fontMainBranch, 15) * 2 + 20;
+        const branchHeight = 50;
         
         // Draw connecting line
         const dx = branchX - centerX;
         const dy = branchY - centerY;
         const dist = Math.sqrt(dx * dx + dy * dy);
         
-        const lineStartX = centerX + (dx / dist) * centralRadius;
-        const lineStartY = centerY + (dy / dist) * centralRadius;
-        const lineEndX = branchX - (dx / dist) * branchNodeRadius;
-        const lineEndY = branchY - (dy / dist) * branchNodeRadius;
+        const lineStartX = centerX + (dx / dist) * 60;
+        const lineStartY = centerY + (dy / dist) * 60;
+        const lineEndX = branchX - (dx / dist) * (branchWidth / 2);
+        const lineEndY = branchY - (dy / dist) * (branchHeight / 2);
         
         svg.append('line')
             .attr('x1', lineStartX)
             .attr('y1', lineStartY)
             .attr('x2', lineEndX)
             .attr('y2', lineEndY)
-            .attr('stroke', '#888')
+            .attr('stroke', THEME.linkStroke || '#888')
             .attr('stroke-width', 2);
     });
     
-    // Watermark
-    addWatermark(svg, theme);
+    // Second pass: Draw all branch nodes
+    spec.children.forEach((child, i) => {
+        const angle = i * angleStep;
+        const branchX = centerX + branchRadius * Math.cos(angle);
+        const branchY = centerY + branchRadius * Math.sin(angle);
+        
+        // Draw branch node (rectangle)
+        const branchWidth = getTextRadius(child.label, THEME.fontMainBranch, 15) * 2 + 20;
+        const branchHeight = 50;
+        
+        svg.append('rect')
+            .attr('x', branchX - branchWidth / 2)
+            .attr('y', branchY - branchHeight / 2)
+            .attr('width', branchWidth)
+            .attr('height', branchHeight)
+            .attr('rx', 8) // Rounded corners
+            .attr('ry', 8)
+            .attr('fill', THEME.mainBranchFill || '#a7c7e7')
+            .attr('stroke', THEME.mainBranchStroke || '#4e79a7')
+            .attr('stroke-width', THEME.mainBranchStrokeWidth || 2);
+        
+        svg.append('text')
+            .attr('x', branchX)
+            .attr('y', branchY)
+            .attr('text-anchor', 'middle')
+            .attr('dominant-baseline', 'middle')
+            .attr('fill', THEME.mainBranchText || '#333')
+            .attr('font-size', THEME.fontMainBranch || 16)
+            .text(child.label);
+    });
 }
 
 function renderRadialMindMap(spec, theme = null, dimensions = null) {
