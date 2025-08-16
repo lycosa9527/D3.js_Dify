@@ -1641,7 +1641,8 @@ function renderMindMap(spec, theme = null, dimensions = null) {
     }
     
     // Apply background to container and ensure it fills the entire area
-    const containerBackground = theme?.background || '#f5f5f5'; // Light grey background
+    // Use background from Python agent if available, otherwise from theme or fallback
+    const containerBackground = spec._layout?.params?.background || theme?.background || '#f5f5f5';
     d3.select('#d3-container')
         .style('background-color', containerBackground)
         .style('width', '100%')
@@ -1655,10 +1656,10 @@ function renderMindMap(spec, theme = null, dimensions = null) {
         .attr('height', height)
         .attr('viewBox', `0 0 ${width} ${height}`)
         .attr('preserveAspectRatio', 'xMidYMid meet')
-        .style('background-color', '#f5f5f5'); // Light grey background (better than white)
+        .style('background-color', containerBackground); // Use the same background color
     
     // Check if we have enhanced layout data from the Python agent
-    if (spec._layout && spec._layout.algorithm === 'clockwise_radial') {
+    if (spec._layout && (spec._layout.algorithm === 'clockwise_radial' || spec._layout.algorithm === 'column_vertical_stack' || spec._layout.algorithm === 'clean_vertical_stack')) {
         // Use enhanced layout from Python agent - don't draw topic here
         const centerX = width / 2;
         const centerY = height / 2;
@@ -1699,6 +1700,15 @@ function renderEnhancedMindMap(spec, svg, centerX, centerY, THEME) {
     const positions = spec.positions;
     const connections = spec.connections || [];
     
+    // Debug logging
+    console.log('renderEnhancedMindMap called with:', {
+        centerX, centerY,
+        positionsCount: Object.keys(positions).length,
+        connectionsCount: connections.length,
+        positions: positions,
+        connections: connections
+    });
+    
     // First pass: Draw all connecting lines (so they appear behind nodes)
     // Use explicit connections if available, otherwise infer from positions
     if (connections.length > 0) {
@@ -1706,12 +1716,14 @@ function renderEnhancedMindMap(spec, svg, centerX, centerY, THEME) {
         connections.forEach(conn => {
             let fromPos, toPos;
             
+            // Handle topic connections
             if (conn.from.type === 'topic') {
                 fromPos = positions['topic'];
             } else if (conn.from.type === 'branch') {
                 fromPos = positions[`branch_${conn.branch_index}`];
             }
             
+            // Handle branch and child connections
             if (conn.to.type === 'branch') {
                 toPos = positions[`branch_${conn.branch_index}`];
             } else if (conn.to.type === 'child') {
@@ -1732,6 +1744,9 @@ function renderEnhancedMindMap(spec, svg, centerX, centerY, THEME) {
                 const toY = centerY + toPos.y;
                 const toWidth = toPos.width || (toPos.text ? Math.max(80, toPos.text.length * 8) : 100);
                 const toHeight = toPos.height || 40;
+                
+                // Debug logging
+                console.log(`Drawing connection: ${conn.type} from (${fromX}, ${fromY}) to (${toX}, ${toY})`);
                 
                 // Calculate line endpoints to stop at node boundaries
                 const dx = toX - fromX;
@@ -1844,23 +1859,26 @@ function renderEnhancedMindMap(spec, svg, centerX, centerY, THEME) {
             const topicWidth = pos.width || 120;
             const topicHeight = pos.height || 60;
             
+            // Debug logging
+            console.log(`Drawing topic node at (${topicX}, ${topicY}) with dimensions ${topicWidth}x${topicHeight}`);
+            
             // Draw circular topic node - make it larger for better visual balance and deeper blue
-            const topicRadius = Math.max(topicWidth, topicHeight) / 2 * 1.5; // 50% larger
+            const topicRadius = Math.max(topicWidth, topicHeight) / 2 * 1.3; // 30% larger for balanced size
             
             svg.append('circle')
                 .attr('cx', topicX)
                 .attr('cy', topicY)
                 .attr('r', topicRadius)
-                .attr('fill', '#1976d2')  // Deeper blue to distinguish from subtopics
-                .attr('stroke', '#0d47a1')  // Darker blue border
-                .attr('stroke-width', 2);
+                .attr('fill', pos.fill || '#1976d2')  // Use color from Python agent or fallback
+                .attr('stroke', pos.stroke || '#0d47a1')  // Use stroke from Python agent or fallback
+                .attr('stroke-width', pos.stroke_width || 2);
             
             svg.append('text')
                 .attr('x', topicX)
                 .attr('y', topicY)
                 .attr('text-anchor', 'middle')
                 .attr('dominant-baseline', 'middle')
-                .attr('fill', '#ffffff')  // White text for better contrast against deep blue
+                .attr('fill', pos.text_color || '#ffffff')  // Use text color from Python agent or fallback
                 .attr('font-size', THEME.fontCentral || 18)
                 .attr('font-weight', 'bold')
                 .text(pos.text || 'Topic');
@@ -1873,6 +1891,9 @@ function renderEnhancedMindMap(spec, svg, centerX, centerY, THEME) {
             const branchWidth = pos.width || (pos.text ? Math.max(100, pos.text.length * 10) : 100);
             const branchHeight = pos.height || 50;
             
+            // Debug logging
+            console.log(`Drawing branch node at (${branchX}, ${branchY}) with dimensions ${branchWidth}x${branchHeight}`);
+            
             // Draw rectangular node
             svg.append('rect')
                 .attr('x', branchX - branchWidth / 2)
@@ -1881,16 +1902,16 @@ function renderEnhancedMindMap(spec, svg, centerX, centerY, THEME) {
                 .attr('height', branchHeight)
                 .attr('rx', 8) // Rounded corners
                 .attr('ry', 8)
-                .attr('fill', THEME.mainBranchFill || '#a7c7e7')
-                .attr('stroke', THEME.mainBranchStroke || '#4e79a7')
-                .attr('stroke-width', THEME.mainBranchStrokeWidth || 2);
+                .attr('fill', pos.fill || THEME.mainBranchFill || '#a7c7e7')
+                .attr('stroke', pos.stroke || THEME.mainBranchStroke || '#4e79a7')
+                .attr('stroke-width', pos.stroke_width || THEME.mainBranchStrokeWidth || 2);
             
             svg.append('text')
                 .attr('x', branchX)
                 .attr('y', branchY)
                 .attr('text-anchor', 'middle')
                 .attr('dominant-baseline', 'middle')
-                .attr('fill', THEME.mainBranchText || '#333')
+                .attr('fill', pos.text_color || THEME.mainBranchText || '#333')
                 .attr('font-size', THEME.fontMainBranch || 16)
                 .text(pos.text || 'Branch');
                 
@@ -1902,6 +1923,9 @@ function renderEnhancedMindMap(spec, svg, centerX, centerY, THEME) {
             const childWidth = pos.width || (pos.text ? Math.max(80, pos.text.length * 8) : 100);
             const childHeight = pos.height || 40;
             
+            // Debug logging
+            console.log(`Drawing child node at (${childX}, ${childY}) with dimensions ${childWidth}x${childHeight}`);
+            
             // Draw rectangular node
             svg.append('rect')
                 .attr('x', childX - childWidth / 2)
@@ -1910,16 +1934,16 @@ function renderEnhancedMindMap(spec, svg, centerX, centerY, THEME) {
                 .attr('height', childHeight)
                 .attr('rx', 6) // Rounded corners
                 .attr('ry', 6)
-                .attr('fill', THEME.childNodeFill || '#f5f5f5')
-                .attr('stroke', THEME.childNodeStroke || '#cccccc')
-                .attr('stroke-width', 1);
+                .attr('fill', pos.fill || THEME.childNodeFill || '#f5f5f5')
+                .attr('stroke', pos.stroke || THEME.childNodeStroke || '#cccccc')
+                .attr('stroke-width', pos.stroke_width || 1);
             
             svg.append('text')
                 .attr('x', childX)
                 .attr('y', childY)
                 .attr('text-anchor', 'middle')
                 .attr('dominant-baseline', 'middle')
-                .attr('fill', THEME.childNodeText || '#333')
+                .attr('fill', pos.text_color || THEME.childNodeText || '#333')
                 .attr('font-size', THEME.fontChild || 14)
                 .text(pos.text || 'Child');
         }

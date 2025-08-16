@@ -6,7 +6,7 @@ MindGraph provides a RESTful API for generating AI-powered data visualizations f
 
 **Base URL**: `http://localhost:9527` (or your deployed server URL)
 
-**API Version**: 2.3.9
+**API Version**: 2.4.0
 
 **Endpoint Compatibility**: Both `/endpoint` and `/api/endpoint` formats are supported for backward compatibility.
 
@@ -637,4 +637,4 @@ X-RateLimit-Reset: 1640995200
 
 ---
 
-For more information, see the [main documentation](README.md) or [installation guide](INSTALLATION.md).
+For more information, see the [main documentation](../README.md).
