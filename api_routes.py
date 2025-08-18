@@ -484,17 +484,20 @@ def generate_png():
         render_start_time = time.time()
         
         async def render_svg_to_png(spec, graph_type):
-            # Load the theme configuration
-            with open('static/js/theme-config.js', 'r', encoding='utf-8') as f:
-                theme_config = f.read()
-            
-            # Load the correct D3.js renderers from the static file
-            with open('static/js/d3-renderers.js', 'r', encoding='utf-8') as f:
-                d3_renderers = f.read()
-            
-            # Load the style manager
-            with open('static/js/style-manager.js', 'r', encoding='utf-8') as f:
-                style_manager = f.read()
+            # Use lazy loading JavaScript cache for optimal performance
+            try:
+                # Import the lazy cache manager
+                from static.js.lazy_cache_manager import get_theme_config, get_style_manager, get_d3_renderers
+                
+                # Get cached JavaScript content (lazy loaded)
+                theme_config = get_theme_config()
+                style_manager = get_style_manager()
+                d3_renderers = get_d3_renderers()
+                
+                logger.info(f"JavaScript files loaded from lazy cache - theme: {len(theme_config)} chars, style: {len(style_manager)} chars, renderers: {len(d3_renderers)} chars")
+            except Exception as e:
+                logger.error(f"Failed to load JavaScript files from lazy cache: {e}")
+                raise
             
             # Log spec data for debugging
             logger.info(f"Spec data keys: {list(spec.keys()) if isinstance(spec, dict) else 'Not a dict'}")
@@ -583,10 +586,24 @@ def generate_png():
             </style>
             </head><body>
             <div id="d3-container"></div>
+            
+            <!-- Theme Configuration -->
             <script>
             {theme_config}
+            </script>
+            
+            <!-- Style Manager -->
+            <script>
             {style_manager}
+            </script>
+            
+            <!-- D3 Renderers -->
+            <script>
             {d3_renderers}
+            </script>
+            
+            <!-- Main Rendering Logic -->
+            <script>
             console.log("Page loaded, waiting for D3.js...");
             
             // Wait for D3.js to load
@@ -612,9 +629,6 @@ def generate_png():
                         const watermarkConfig = {json.dumps(config.get_watermark_config(), ensure_ascii=False)};
                         backendTheme = {{...theme, ...watermarkConfig}};
                         window.dimensions = {json.dumps(dimensions, ensure_ascii=False)};
-                        
-                        {style_manager}
-                        {d3_renderers}
                         
                         console.log("Rendering graph:", window.graph_type, window.spec);
                         console.log("Style manager loaded:", typeof styleManager);

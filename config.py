@@ -164,6 +164,18 @@ class Config:
             return 9527
     
     @property
+    def SERVER_URL(self):
+        """Get the server URL for static file loading."""
+        host = self.HOST
+        port = self.PORT
+        
+        # Convert 0.0.0.0 to localhost for external access
+        if host == '0.0.0.0':
+            host = 'localhost'
+        
+        return f"http://{host}:{port}"
+    
+    @property
     def DEBUG(self):
         """Flask debug mode setting."""
         return self._get_cached_value('DEBUG', 'False').lower() == 'true'
