@@ -116,6 +116,52 @@ When no style is specified, MindGraph automatically applies:
 ```json
 {
   "error": "Error description",
+```
+
+### 2. Cache Management
+
+#### Clear Cache Endpoint
+
+Clears the modular JavaScript cache for development and debugging purposes.
+
+```http
+POST /api/clear_cache
+```
+
+**Note**: This endpoint is primarily for development use to clear cached JavaScript modules.
+
+#### Request
+
+**Headers:**
+```
+Content-Type: application/json
+```
+
+**Body:** Empty (no body required)
+
+#### Response
+
+**Success (200):**
+```json
+{
+  "status": "success",
+  "message": "Cache cleared successfully"
+}
+```
+
+**Error (500):**
+```json
+{
+  "status": "error",
+  "message": "Error description"
+}
+```
+
+#### Use Cases
+
+- **Development**: Clear cache when making changes to JavaScript modules
+- **Debugging**: Reset cache state when troubleshooting rendering issues
+- **Testing**: Ensure fresh module loading for testing scenarios
   "status": "error",
   "timestamp": "2024-01-01T00:00:00Z"
 }
@@ -622,6 +668,12 @@ X-RateLimit-Reset: 1640995200
 - Check system resources and API service status
 
 ## Changelog
+
+### Version 2.5.0
+- Added `/api/clear_cache` endpoint for development workflow
+- Fixed flow map rendering with professional substep positioning
+- Enhanced modular JavaScript system integration
+- Improved watermark styling consistency across diagram types
 
 ### Version 2.4.0
 - Added comprehensive API documentation

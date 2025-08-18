@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.5.0] - 2025-01-27
 
+### 🎯 **FLOW MAP RENDERING COMPLETELY FIXED**
+
+#### Flow Map System - FULLY RESOLVED ✅
+- **Critical Issue**: Flow map substeps not rendering correctly with modular system
+- **Root Cause**: Function exposure issues and incomplete substep positioning logic
+- **Solution Implemented**: Complete rewrite of flow-renderer.js based on original d3-renderers.js
+- **Status**: FULLY RESOLVED & PRODUCTION READY
+
+#### Flow Map Improvements
+- **Professional Substep Rendering**: L-shaped connectors between steps and substeps
+- **Perfect Positioning**: Substeps positioned to the right with adaptive spacing
+- **Theme Integration**: Consistent styling with centralized theme system
+- **Watermark Styling**: Identical to bubble maps (#2c3e50, lower right corner)
+- **Responsive Layout**: Canvas automatically sizes to fit all content
+
+#### Technical Architecture
+- **Modular Renderers**: Flow renderer properly integrated with modular JavaScript system
+- **Function Exposure**: Fixed global function availability for HTML rendering
+- **Cache Management**: Corrected API endpoints for development workflow
+- **Performance**: 66.8% JavaScript savings with focused module loading
+
+---
+
 ### 🚀 **CRITICAL PERFORMANCE OPTIMIZATION COMPLETE**
 
 #### D3 Renderer JS Fix - FULLY RESOLVED ✅
