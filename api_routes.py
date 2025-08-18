@@ -263,7 +263,7 @@ def generate_graph():
                     logger.warning(f"ConceptMapAgent enhancement skipped: {agent_result.get('error')}")
             except Exception as e:
                 logger.error(f"Error enhancing concept_map spec: {e}")
-        elif diagram_type == 'mindmap' or diagram_type == 'radial_mindmap':
+        elif diagram_type == 'mindmap':
             try:
                 from mind_map_agent import MindMapAgent
                 m_agent = MindMapAgent()
@@ -291,7 +291,7 @@ def generate_graph():
         # Calculate optimized dimensions
         dimensions = config.get_d3_dimensions()
         # Use agent-recommended dimensions if provided
-        if diagram_type in ('multi_flow_map', 'flow_map', 'tree_map', 'concept_map', 'mindmap', 'radial_mindmap') and isinstance(spec, dict) and spec.get('_recommended_dimensions'):
+        if diagram_type in ('multi_flow_map', 'flow_map', 'tree_map', 'concept_map', 'mindmap') and isinstance(spec, dict) and spec.get('_recommended_dimensions'):
             rd = spec['_recommended_dimensions']
             try:
                 dimensions = {
@@ -452,7 +452,7 @@ def generate_png():
                 logger.warning(f"ConceptMapAgent enhancement skipped: {agent_result.get('error')}")
         except Exception as e:
             logger.error(f"Error enhancing concept_map spec: {e}")
-    elif graph_type == 'mindmap' or graph_type == 'radial_mindmap':
+    elif graph_type == 'mindmap':
         # Check if spec is already enhanced by agent (has _layout and _recommended_dimensions)
         if not (isinstance(spec, dict) and spec.get('_layout') and spec.get('_recommended_dimensions')):
             # Only enhance if not already enhanced
@@ -484,20 +484,62 @@ def generate_png():
         render_start_time = time.time()
         
         async def render_svg_to_png(spec, graph_type):
-            # Use lazy loading JavaScript cache for optimal performance
+            # Use modular loading for optimal performance (Option 3: Code Splitting)
             try:
-                # Import the lazy cache manager
-                from static.js.lazy_cache_manager import get_theme_config, get_style_manager, get_d3_renderers
+                # Import the modular cache manager (Python wrapper)
+                from static.js.modular_cache_python import get_javascript_for_graph_type
                 
-                # Get cached JavaScript content (lazy loaded)
-                theme_config = get_theme_config()
-                style_manager = get_style_manager()
-                d3_renderers = get_d3_renderers()
+                # Get graph-type-specific JavaScript content with performance stats
+                combined_js, modular_stats = get_javascript_for_graph_type(graph_type)
                 
-                logger.info(f"JavaScript files loaded from lazy cache - theme: {len(theme_config)} chars, style: {len(style_manager)} chars, renderers: {len(d3_renderers)} chars")
+                logger.info(f"📦 Modular JavaScript loaded for {graph_type}:")
+                logger.info(f"   - Modules: {modular_stats['module_names']}")
+                logger.info(f"   - Size: {modular_stats['total_size_kb']}KB")
+                logger.info(f"   - Savings: {modular_stats['savings_percent']}% ({modular_stats['savings_bytes']} bytes)")
+                logger.info(f"   - Cache hit rate: {modular_stats['cache_hit_rate']}%")
+                
+                # Split the combined JS for compatibility with existing HTML template
+                import re
+                
+                # Use regex to split by module headers and extract content
+                theme_match = re.search(r'// === THEME-CONFIG MODULE ===\n(.*?)(?=// === \w+)', combined_js, re.DOTALL)
+                style_match = re.search(r'// === STYLE-MANAGER MODULE ===\n(.*?)(?=// === \w+)', combined_js, re.DOTALL)
+                renderer_match = re.search(r'// === (?:SHARED-UTILITIES|MIND-MAP-RENDERER|CONCEPT-MAP-RENDERER|BUBBLE-MAP-RENDERER|TREE-RENDERER|FLOW-RENDERER|VENN-RENDERER|TIMELINE-RENDERER|BRACE-RENDERER|SEMANTIC-RENDERER) MODULE ===\n(.*?)$', combined_js, re.DOTALL)
+                
+                theme_config = theme_match.group(1).strip() if theme_match else ""
+                style_manager = style_match.group(1).strip() if style_match else ""
+                combined_renderers = renderer_match.group(1).strip() if renderer_match else ""
+                
+                # If regex fails, fallback to simple approach
+                if not theme_config or not style_manager or not combined_renderers:
+                    logger.warning("Regex splitting failed, using fallback splitting method")
+                    # Split by double newlines and filter by content
+                    sections = combined_js.split('\n\n')
+                    theme_config = ""
+                    style_manager = ""
+                    combined_renderers = ""
+                    
+                    for section in sections:
+                        if 'THEME_CONFIG' in section or 'getD3Theme' in section:
+                            theme_config += section + "\n\n"
+                        elif 'styleManager' in section or 'getTheme' in section:
+                            style_manager += section + "\n\n"
+                        elif any(func in section for func in ['renderMindMap', 'renderConceptMap', 'drawNode', 'createSimulation']):
+                            combined_renderers += section + "\n\n"
+                
             except Exception as e:
-                logger.error(f"Failed to load JavaScript files from lazy cache: {e}")
-                raise
+                logger.error(f"❌ Failed to load modular JavaScript for {graph_type}: {e}")
+                # Fallback to lazy cache if modular loading fails
+                try:
+                    logger.warning("🔄 Falling back to lazy cache manager...")
+                    from static.js.lazy_cache_manager import get_theme_config, get_style_manager, get_d3_renderers
+                    combined_renderers = get_d3_renderers()
+                    theme_config = get_theme_config()
+                    style_manager = get_style_manager()
+                    logger.warning(f"📦 Fallback: Using full d3-renderers.js ({round(len(combined_renderers)/1024, 1)}KB)")
+                except Exception as fallback_error:
+                    logger.error(f"❌ Fallback also failed: {fallback_error}")
+                    raise
             
             # Log spec data for debugging
             logger.info(f"Spec data keys: {list(spec.keys()) if isinstance(spec, dict) else 'Not a dict'}")
@@ -597,9 +639,9 @@ def generate_png():
             {style_manager}
             </script>
             
-            <!-- D3 Renderers -->
+            <!-- Modular D3 Renderers (Only Required for {graph_type}) -->
             <script>
-            {d3_renderers}
+            {combined_renderers}
             </script>
             
             <!-- Main Rendering Logic -->

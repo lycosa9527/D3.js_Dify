@@ -421,55 +421,7 @@ def validate_mindmap(spec: Dict) -> Tuple[bool, str]:
     
     return True, ""
 
-def validate_radial_mindmap(spec: Dict) -> Tuple[bool, str]:
-    """Validation for radial mind map."""
-    # Validate required fields
-    is_valid, error = validate_required_fields(spec, ["topic", "branches"])
-    if not is_valid:
-        return False, error
-    
-    # Validate topic field
-    is_valid, error = validate_string_field(spec, "topic")
-    if not is_valid:
-        return False, error
-    
-    # Validate branches
-    if not isinstance(spec["branches"], list):
-        return False, "branches must be a list"
-    
-    if len(spec["branches"]) == 0:
-        return False, "branches cannot be empty"
-    
-    if len(spec["branches"]) > 8:  # Limit for radial layout
-        return False, "branches cannot have more than 8 items"
-    
-    for i, branch in enumerate(spec["branches"]):
-        if not isinstance(branch, dict):
-            return False, f"branches[{i}] must be a dictionary"
-        
-        if "name" not in branch:
-            return False, f"branches[{i}] must have 'name' field"
-        
-        # Validate name
-        if not isinstance(branch["name"], str) or not branch["name"].strip():
-            return False, f"branches[{i}].name must be a non-empty string"
-        
-        # Validate children if present
-        if "children" in branch:
-            if not isinstance(branch["children"], list):
-                return False, f"branches[{i}].children must be a list"
-            
-            for j, child in enumerate(branch["children"]):
-                if not isinstance(child, dict):
-                    return False, f"branches[{i}].children[{j}] must be a dictionary"
-                
-                if "name" not in child:
-                    return False, f"branches[{i}].children[{j}] must have 'name' field"
-                
-                if not isinstance(child["name"], str) or not child["name"].strip():
-                    return False, f"branches[{i}].children[{j}].name must be a non-empty string"
-    
-    return True, ""
+
 
 # ============================================================================
 # COMMON DIAGRAMS CATEGORY
@@ -691,7 +643,6 @@ DIAGRAM_VALIDATORS = {
     
     # Mind Maps
     "mindmap": validate_mindmap,
-    "radial_mindmap": validate_radial_mindmap,
     
     # Common Diagrams
     "venn_diagram": validate_venn_diagram,

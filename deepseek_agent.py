@@ -667,7 +667,7 @@ def classify_diagram_type_for_development(user_prompt: str, language: str = 'en'
         
         # Mind Maps
         "mindmap": "Organize ideas around a central topic",
-        "radial_mindmap": "Create a radial mind map structure",
+
         
         # Removed Common Diagrams - only using thinking maps, concept maps, mind maps
     }
@@ -811,8 +811,7 @@ Your output:
             return "concept_map"
         elif any(word in user_prompt.lower() for word in ["semantic", "network", "语义", "网络", "语义网络"]):
             return "semantic_web"
-        elif any(word in user_prompt.lower() for word in ["radial", "径向", "径向思维导图"]):
-            return "radial_mindmap"
+
         else:
             return "bubble_map"  # Default fallback
             
@@ -840,8 +839,7 @@ Your output:
             return "concept_map"
         elif any(word in user_prompt.lower() for word in ["semantic", "network", "语义", "网络", "语义网络"]):
             return "semantic_web"
-        elif any(word in user_prompt.lower() for word in ["radial", "径向", "径向思维导图"]):
-            return "radial_mindmap"
+
         else:
             return "bubble_map"
 

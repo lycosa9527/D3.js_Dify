@@ -250,18 +250,7 @@ DEFAULT_STYLES = {
         "strokeWidth": 2
     },
     
-    "radial_mindmap": {
-        "centralTopicColor": "#4e79a7",
-        "centralTopicTextColor": "#ffffff",
-        "centralTopicFontSize": 22,
-        "centralTopicFontWeight": "bold",
-        "branchColors": ["#f28e2b", "#e15759", "#76b7b2", "#59a14f", "#edc949", "#af7aa1", "#ff9da7", "#9c755f"],
-        "branchTextColor": "#2c3e50",
-        "branchFontSize": 16,
-        "stroke": "#2c3e50",
-        "strokeWidth": 2
-    },
-    
+
     # Concept Maps
     "concept_map": {
         "conceptColor": "#4e79a7",

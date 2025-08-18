@@ -641,7 +641,7 @@ def extract_topics_and_styles_from_prompt_qwen(user_prompt: str, language: str =
 - 教育系统的概念图 → concept_map
 - 创建语义网络 → semantic_web
 - 制作思维导图 → mindmap
-- 绘制径向思维导图 → radial_mindmap
+
 
 样式偏好包括：
 - colorTheme: 颜色主题 (classic, innovation, colorful, monochromatic, dark, light, print, display)
@@ -689,7 +689,7 @@ Available diagram types:
 
 # Mind Maps
 - mindmap: Organize ideas around a central topic
-- radial_mindmap: Create a radial mind map structure
+
 
 
 
@@ -711,7 +711,7 @@ Key Examples:
 - Map education concepts → concept_map
 - Create semantic network → semantic_web
 - Make mind map → mindmap
-- Draw radial mind map → radial_mindmap
+
 
 Style preferences include:
 - colorTheme: Color theme (classic, innovation, colorful, monochromatic, dark, light, print, display)
