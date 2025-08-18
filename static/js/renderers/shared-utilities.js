@@ -323,6 +323,9 @@ if (typeof window !== 'undefined') {
         wrapText,
         renderGraph
     };
+    
+    // Also make renderGraph available globally for backward compatibility
+    window.renderGraph = renderGraph;
 } else if (typeof module !== 'undefined' && module.exports) {
     // Node.js environment
     module.exports = {

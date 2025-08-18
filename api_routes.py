@@ -689,6 +689,14 @@ def generate_png():
                         if (window.graph_type === "brace_map" && window.spec.success) {{
                             console.log("Using brace map agent renderer");
                             renderBraceMapAgent(window.spec, backendTheme, window.dimensions);
+                        }} else if (window.graph_type === "flow_map") {{
+                            console.log("Using flow map renderer directly");
+                            if (typeof renderFlowMap === "function") {{
+                                renderFlowMap(window.spec, backendTheme, window.dimensions);
+                            }} else {{
+                                console.error("renderFlowMap function not available");
+                                document.body.innerHTML += "<div style=\\"color: red; padding: 20px;\\">Flow map renderer not loaded</div>";
+                            }}
                         }} else {{
                             renderGraph(window.graph_type, window.spec, backendTheme, window.dimensions);
                         }}
@@ -1065,4 +1073,14 @@ def get_timing_stats():
         }
     }
     
-    return jsonify(formatted_stats) 
+    return jsonify(formatted_stats)
+
+@api.route('/clear_cache', methods=['POST'])
+def clear_cache():
+    """Clear the modular cache for development"""
+    try:
+        from static.js.modular_cache_python import modular_js_manager
+        modular_js_manager.clear_cache()
+        return jsonify({"status": "success", "message": "Cache cleared successfully"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500 
