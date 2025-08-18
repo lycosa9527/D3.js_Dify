@@ -9,10 +9,10 @@
 
 // Check if shared utilities are available
 if (typeof window.MindGraphUtils === 'undefined') {
-    console.error('MindGraphUtils not found! Please load shared-utilities.js first.');
+    console.error('MindGraphUtils not found. Please load shared-utilities.js first.');
 }
 
-const { getTextRadius, addWatermark, getThemeDefaults } = window.MindGraphUtils;
+// Note: getTextRadius and addWatermark are available globally from shared-utilities.js
 
 function renderBubbleMap(spec, theme = null, dimensions = null) {
     d3.select('#d3-container').html('');
@@ -26,18 +26,13 @@ function renderBubbleMap(spec, theme = null, dimensions = null) {
     const baseHeight = dimensions?.baseHeight || 500;
     const padding = dimensions?.padding || 40;
     
-    // Get complete theme using centralized configuration
+    // Load theme
     let THEME;
     try {
-        // Use centralized theme configuration if available
-        if (typeof getD3Theme === 'function') {
-            THEME = getD3Theme('bubble_map');
-            console.log('Using centralized theme configuration');
-        } else if (typeof styleManager !== 'undefined' && styleManager.getTheme) {
+        if (typeof styleManager !== 'undefined' && styleManager.getTheme) {
             THEME = styleManager.getTheme('bubble_map', theme, theme);
-            console.log('Using style manager theme');
         } else {
-            console.warn('Using fallback theme');
+            console.warn('Style manager not available, using fallback theme');
             THEME = {
                 topicFill: '#1976d2',  // Deep blue background
                 topicText: '#ffffff',   // White text for contrast
@@ -53,7 +48,7 @@ function renderBubbleMap(spec, theme = null, dimensions = null) {
             };
         }
     } catch (error) {
-        console.error('Error getting theme:', error);
+        console.error('Error getting theme from style manager:', error);
         THEME = {
             topicFill: '#1976d2',
             topicText: '#ffffff',
