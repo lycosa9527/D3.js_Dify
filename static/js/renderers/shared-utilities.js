@@ -224,7 +224,16 @@ function renderGraph(type, spec, theme = null, dimensions = null) {
     let integratedTheme = theme;
     if (spec && spec._style) {
         console.log('Using integrated styles from spec:', spec._style);
-        integratedTheme = spec._style;
+        // Merge spec styles with backend theme (backend background takes priority)
+        integratedTheme = {
+            ...spec._style,
+            background: theme?.background
+        };
+        console.log('Merged theme background (backend priority):', integratedTheme.background);
+    } else {
+        // Use theme as-is (no fallbacks)
+        integratedTheme = theme;
+        console.log('Using backend theme background:', integratedTheme?.background);
     }
     
     // Extract style metadata for debugging

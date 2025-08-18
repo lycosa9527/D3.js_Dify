@@ -212,8 +212,28 @@ function renderBubbleMap(spec, theme = null, dimensions = null) {
             .text(node.text);
     });
     
-    // Watermark
-    addWatermark(svg, theme);
+    // Add watermark in lower right corner - matching original d3-renderers.js
+    const watermarkText = 'MindGraph';
+    
+    // Calculate dynamic padding and font size like original
+    const watermarkPadding = Math.max(5, Math.min(15, Math.min(width, height) * 0.01));
+    const watermarkFontSize = Math.max(8, Math.min(16, Math.min(width, height) * 0.02));
+    
+    const watermarkX = maxX - watermarkPadding;
+    const watermarkY = maxY - watermarkPadding;
+    
+    svg.append('text')
+        .attr('x', watermarkX)
+        .attr('y', watermarkY)
+        .attr('text-anchor', 'end')
+        .attr('dominant-baseline', 'alphabetic')
+        .attr('fill', '#2c3e50')  // Original dark blue-grey color
+        .attr('font-size', watermarkFontSize)
+        .attr('font-family', 'Inter, Segoe UI, sans-serif')
+        .attr('font-weight', '500')
+        .attr('opacity', 0.8)     // Original 80% opacity
+        .attr('pointer-events', 'none')
+        .text(watermarkText);
 }
 
 function renderCircleMap(spec, theme = null, dimensions = null) {
@@ -322,125 +342,388 @@ function renderCircleMap(spec, theme = null, dimensions = null) {
         .attr('font-weight', 'bold')
         .text(spec.topic);
     
-    // Watermark
-    addWatermark(svg, theme);
+    // Add watermark in lower right corner - matching original d3-renderers.js
+    const watermarkText = 'MindGraph';
+    
+    // Calculate dynamic padding and font size like original
+    const watermarkPadding = Math.max(10, Math.min(20, Math.min(width, height) * 0.02));
+    const watermarkFontSize = Math.max(12, Math.min(20, Math.min(width, height) * 0.025));
+    
+    const watermarkX = width - watermarkPadding;
+    const watermarkY = height - watermarkPadding;
+    
+    svg.append('text')
+        .attr('x', watermarkX)
+        .attr('y', watermarkY)
+        .attr('text-anchor', 'end')
+        .attr('dominant-baseline', 'alphabetic')
+        .attr('fill', '#2c3e50')  // Original dark blue-grey color
+        .attr('font-size', watermarkFontSize)
+        .attr('font-family', 'Inter, Segoe UI, sans-serif')
+        .attr('font-weight', '500')
+        .attr('opacity', 0.8)     // Original 80% opacity
+        .attr('pointer-events', 'none')
+        .text(watermarkText);
 }
 
 function renderDoubleBubbleMap(spec, theme = null, dimensions = null) {
     d3.select('#d3-container').html('');
-    if (!spec || !spec.topic1 || !spec.topic2) {
-        d3.select('#d3-container').append('div').style('color', 'red').text('Invalid spec for double bubble map');
+    
+    // Enhanced validation with detailed error messages
+    if (!spec) {
+        console.error('renderDoubleBubbleMap: spec is null or undefined');
+        d3.select('#d3-container').append('div').style('color', 'red').text('Error: No specification provided');
         return;
     }
     
+    if (!spec.left || !spec.right) {
+        console.error('renderDoubleBubbleMap: missing left or right topic', { left: spec.left, right: spec.right });
+        d3.select('#d3-container').append('div').style('color', 'red').text('Error: Missing left or right topic');
+        return;
+    }
+    
+    if (!Array.isArray(spec.similarities)) {
+        console.error('renderDoubleBubbleMap: similarities is not an array', spec.similarities);
+        d3.select('#d3-container').append('div').style('color', 'red').text('Error: Similarities must be an array');
+        return;
+    }
+    
+    if (!Array.isArray(spec.left_differences)) {
+        console.error('renderDoubleBubbleMap: left_differences is not an array', spec.left_differences);
+        d3.select('#d3-container').append('div').style('color', 'red').text('Error: Left differences must be an array');
+        return;
+    }
+    
+    if (!Array.isArray(spec.right_differences)) {
+        console.error('renderDoubleBubbleMap: right_differences is not an array', spec.right_differences);
+        d3.select('#d3-container').append('div').style('color', 'red').text('Error: Right differences must be an array');
+        return;
+    }
+    
+    console.log('renderDoubleBubbleMap: validation passed, proceeding with rendering');
+    console.log('renderDoubleBubbleMap received theme:', theme);
+    console.log('Theme background property:', theme?.background);
+    
     const baseWidth = dimensions?.baseWidth || 800;
+    
+    // Apply background if specified (like bubble map)
+    if (theme && theme.background) {
+        console.log('Setting container background to theme.background:', theme.background);
+        d3.select('#d3-container').style('background-color', theme.background);
+    }
     const baseHeight = dimensions?.baseHeight || 600;
     const padding = dimensions?.padding || 40;
     
     const THEME = {
-        topic1Fill: '#3498db',
-        topic1Text: '#ffffff',
-        topic1Stroke: '#2c3e50',
-        topic2Fill: '#e74c3c',
-        topic2Text: '#ffffff',
-        topic2Stroke: '#2c3e50',
-        commonFill: '#9b59b6',
-        commonText: '#ffffff',
-        commonStroke: '#2c3e50',
-        attribute1Fill: '#ecf0f1',
-        attribute1Text: '#2c3e50',
-        attribute2Fill: '#ecf0f1',
-        attribute2Text: '#2c3e50',
-        fontTopic: 18,
-        fontAttribute: 14,
-        strokeWidth: 2,
+        topicFill: '#1976d2',          // Deep blue for both topics (matches original)
+        topicText: '#ffffff',          // White text for both topics (matches original)
+        topicStroke: '#000000',        // Black border for both topics (matches original)
+        topicStrokeWidth: 2,
+        simFill: '#e3f2fd',            // Light blue for similarities (matches original)
+        simText: '#333333',            // Dark text for similarities (matches original)
+        simStroke: '#000000',          // Black border for similarities (matches original)
+        simStrokeWidth: 2,
+        diffFill: '#e3f2fd',           // Light blue for differences (matches original)
+        diffText: '#333333',           // Dark text for differences (matches original)
+        diffStroke: '#000000',         // Black border for differences (matches original)
+        diffStrokeWidth: 2,
+        fontTopic: '18px Inter, sans-serif',
+        fontSim: 14,
+        fontDiff: 14,
         ...theme
     };
     
-    // Calculate text sizes
-    const topic1R = getTextRadius(spec.topic1, THEME.fontTopic, 20);
-    const topic2R = getTextRadius(spec.topic2, THEME.fontTopic, 20);
+    // Calculate text sizes and radii
+    const leftTopicR = getTextRadius(spec.left, THEME.fontTopic, 20);
+    const rightTopicR = getTextRadius(spec.right, THEME.fontTopic, 20);
+    const topicR = Math.max(leftTopicR, rightTopicR, 60);
     
-    // Calculate positions
-    const centerX = baseWidth / 2;
-    const centerY = baseHeight / 2;
-    const separation = Math.max(topic1R + topic2R + 100, 200);
+    const simR = Math.max(...spec.similarities.map(t => getTextRadius(t, THEME.fontAttribute, 10)), 28);
+    const leftDiffR = Math.max(...spec.left_differences.map(t => getTextRadius(t, THEME.fontAttribute, 8)), 24);
+    const rightDiffR = Math.max(...spec.right_differences.map(t => getTextRadius(t, THEME.fontAttribute, 8)), 24);
     
-    const topic1X = centerX - separation / 2;
-    const topic2X = centerX + separation / 2;
+    // Calculate counts
+    const simCount = spec.similarities.length;
+    const leftDiffCount = spec.left_differences.length;
+    const rightDiffCount = spec.right_differences.length;
+    
+    // Calculate column heights
+    const simColHeight = simCount > 0 ? (simCount - 1) * (simR * 2 + 12) + simR * 2 : 0;
+    const leftColHeight = leftDiffCount > 0 ? (leftDiffCount - 1) * (leftDiffR * 2 + 10) + leftDiffR * 2 : 0;
+    const rightColHeight = rightDiffCount > 0 ? (rightDiffCount - 1) * (rightDiffR * 2 + 10) + rightDiffR * 2 : 0;
+    const maxColHeight = Math.max(simColHeight, leftColHeight, rightColHeight, topicR * 2);
+    const height = Math.max(baseHeight, maxColHeight + padding * 2);
+    
+    // Position columns with 50px spacing between them
+    const columnSpacing = 50;
+    const leftDiffX = padding + leftDiffR;
+    const leftTopicX = leftDiffX + leftDiffR + columnSpacing + topicR;
+    const similaritiesX = leftTopicX + topicR + columnSpacing + simR;
+    const rightTopicX = similaritiesX + simR + columnSpacing + topicR;
+    const rightDiffX = rightTopicX + topicR + columnSpacing + rightDiffR;
+    
+    // Calculate width to accommodate all columns
+    const requiredWidth = rightDiffX + rightDiffR + padding * 2;
+    const width = Math.max(baseWidth, requiredWidth);
+    const topicY = height / 2;
     
     const svg = d3.select('#d3-container').append('svg')
-        .attr('width', baseWidth)
-        .attr('height', baseHeight)
-        .attr('viewBox', `0 0 ${baseWidth} ${baseHeight}`)
-        .attr('preserveAspectRatio', 'xMidYMid meet');
+        .attr('width', width)
+        .attr('height', height)
+        .attr('viewBox', `0 0 ${width} ${height}`)
+        .attr('preserveAspectRatio', 'xMinYMin meet');
     
-    // Draw topic 1
+    // Add background rect to cover entire SVG area (prevents white bar)
+    const bgColor = (theme && theme.background) ? theme.background : '#f5f5f5';
+    svg.append('rect')
+        .attr('width', width)
+        .attr('height', height)
+        .attr('fill', bgColor)
+        .attr('x', 0)
+        .attr('y', 0);
+    
+    // Apply container background if specified (like bubble map)
+    if (theme && theme.background) {
+        console.log('Setting container background to:', theme.background, 'dimensions:', width, 'x', height);
+        d3.select('#d3-container').style('background-color', theme.background);
+    }
+    
+    // Draw all connecting lines first (so they appear behind nodes)
+    // Lines from left topic to similarities
+    if (spec.similarities && Array.isArray(spec.similarities)) {
+        const simStartY = topicY - ((simCount - 1) * (simR * 2 + 12)) / 2;
+        spec.similarities.forEach((item, i) => {
+            const y = simStartY + i * (simR * 2 + 12);
+            
+            // Line from left topic to similarity
+            const dxL = leftTopicX - similaritiesX;
+            const dyL = topicY - y;
+            const distL = Math.sqrt(dxL * dxL + dyL * dyL);
+            if (distL > 0) {
+                const x1L = similaritiesX + (dxL / distL) * simR;
+                const y1L = y + (dyL / distL) * simR;
+                const x2L = leftTopicX - (dxL / distL) * topicR;
+                const y2L = topicY - (dyL / distL) * topicR;
+                
+                svg.append('line')
+                    .attr('x1', x1L)
+                    .attr('y1', y1L)
+                    .attr('x2', x2L)
+                    .attr('y2', y2L)
+                    .attr('stroke', '#888')
+                    .attr('stroke-width', 2);
+            }
+            
+            // Line from right topic to similarity
+            const dxR = rightTopicX - similaritiesX;
+            const dyR = topicY - y;
+            const distR = Math.sqrt(dxR * dxR + dyR * dyR);
+            if (distR > 0) {
+                const x1R = similaritiesX + (dxR / distR) * simR;
+                const y1R = y + (dyR / distR) * simR;
+                const x2R = rightTopicX - (dxR / distR) * topicR;
+                const y2R = topicY - (dyR / distR) * topicR;
+                
+                svg.append('line')
+                    .attr('x1', x1R)
+                    .attr('y1', y1R)
+                    .attr('x2', x2R)
+                    .attr('y2', y2R)
+                    .attr('stroke', '#888')
+                    .attr('stroke-width', 2);
+            }
+        });
+    }
+    
+    // Lines from left topic to left differences
+    if (spec.left_differences && Array.isArray(spec.left_differences)) {
+        const leftDiffStartY = topicY - ((leftDiffCount - 1) * (leftDiffR * 2 + 10)) / 2;
+        spec.left_differences.forEach((item, i) => {
+            const y = leftDiffStartY + i * (leftDiffR * 2 + 10);
+            
+            const dx = leftTopicX - leftDiffX;
+            const dy = topicY - y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > 0) {
+                const x1 = leftDiffX + (dx / dist) * leftDiffR;
+                const y1 = y + (dy / dist) * leftDiffR;
+                const x2 = leftTopicX - (dx / dist) * topicR;
+                const y2 = topicY - (dy / dist) * topicR;
+                
+                svg.append('line')
+                    .attr('x1', x1)
+                    .attr('y1', y1)
+                    .attr('x2', x2)
+                    .attr('y2', y2)
+                    .attr('stroke', '#bbb')
+                    .attr('stroke-width', 2);
+            }
+        });
+    }
+    
+    // Lines from right topic to right differences
+    if (spec.right_differences && Array.isArray(spec.right_differences)) {
+        const rightDiffStartY = topicY - ((rightDiffCount - 1) * (rightDiffR * 2 + 10)) / 2;
+        spec.right_differences.forEach((item, i) => {
+            const y = rightDiffStartY + i * (rightDiffR * 2 + 10);
+            
+            const dx = rightTopicX - rightDiffX;
+            const dy = topicY - y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > 0) {
+                const x1 = rightDiffX + (dx / dist) * rightDiffR;
+                const y1 = y + (dy / dist) * rightDiffR;
+                const x2 = rightTopicX - (dx / dist) * topicR;
+                const y2 = topicY - (dy / dist) * topicR;
+                
+                svg.append('line')
+                    .attr('x1', x1)
+                    .attr('y1', y1)
+                    .attr('x2', x2)
+                    .attr('y2', y2)
+                    .attr('stroke', '#bbb')
+                    .attr('stroke-width', 2);
+                }
+        });
+    }
+    
+    // Draw left topic
     svg.append('circle')
-        .attr('cx', topic1X)
-        .attr('cy', centerY)
-        .attr('r', topic1R)
-        .attr('fill', THEME.topic1Fill)
-        .attr('stroke', THEME.topic1Stroke)
-        .attr('stroke-width', THEME.strokeWidth);
+        .attr('cx', leftTopicX)
+        .attr('cy', topicY)
+        .attr('r', topicR)
+        .attr('fill', THEME.topicFill)
+        .attr('opacity', 0.9)
+        .attr('stroke', THEME.topicStroke)
+        .attr('stroke-width', THEME.topicStrokeWidth);
     
     svg.append('text')
-        .attr('x', topic1X)
-        .attr('y', centerY)
+        .attr('x', leftTopicX)
+        .attr('y', topicY)
         .attr('text-anchor', 'middle')
         .attr('dominant-baseline', 'middle')
-        .attr('fill', THEME.topic1Text)
+        .attr('fill', THEME.topicText)
         .attr('font-size', THEME.fontTopic)
-        .attr('font-weight', 'bold')
-        .text(spec.topic1);
+        .attr('font-weight', 600)
+        .text(spec.left);
     
-    // Draw topic 2
+    // Draw right topic
     svg.append('circle')
-        .attr('cx', topic2X)
-        .attr('cy', centerY)
-        .attr('r', topic2R)
-        .attr('fill', THEME.topic2Fill)
-        .attr('stroke', THEME.topic2Stroke)
-        .attr('stroke-width', THEME.strokeWidth);
+        .attr('cx', rightTopicX)
+        .attr('cy', topicY)
+        .attr('r', topicR)
+        .attr('fill', THEME.topicFill)
+        .attr('opacity', 0.9)
+        .attr('stroke', THEME.topicStroke)
+        .attr('stroke-width', THEME.topicStrokeWidth);
     
     svg.append('text')
-        .attr('x', topic2X)
-        .attr('y', centerY)
+        .attr('x', rightTopicX)
+        .attr('y', topicY)
         .attr('text-anchor', 'middle')
         .attr('dominant-baseline', 'middle')
-        .attr('fill', THEME.topic2Text)
+        .attr('fill', THEME.topicText)
         .attr('font-size', THEME.fontTopic)
-        .attr('font-weight', 'bold')
-        .text(spec.topic2);
+        .attr('font-weight', 600)
+        .text(spec.right);
     
-    // Draw common characteristics in the center
-    if (spec.common && Array.isArray(spec.common)) {
-        const commonY = centerY - 100;
-        spec.common.forEach((item, i) => {
-            const commonR = getTextRadius(item, THEME.fontAttribute, 10);
-            const y = commonY + i * 30;
+    // Draw similarities in center column
+    if (spec.similarities && Array.isArray(spec.similarities)) {
+        const simStartY = topicY - ((simCount - 1) * (simR * 2 + 12)) / 2;
+        spec.similarities.forEach((item, i) => {
+            const y = simStartY + i * (simR * 2 + 12);
             
             svg.append('circle')
-                .attr('cx', centerX)
+                .attr('cx', similaritiesX)
                 .attr('cy', y)
-                .attr('r', commonR)
-                .attr('fill', THEME.commonFill)
-                .attr('stroke', THEME.commonStroke)
-                .attr('stroke-width', THEME.strokeWidth);
+                .attr('r', simR)
+                .attr('fill', THEME.simFill)
+                .attr('stroke', THEME.simStroke)
+                .attr('stroke-width', THEME.simStrokeWidth);
             
             svg.append('text')
-                .attr('x', centerX)
+                .attr('x', similaritiesX)
                 .attr('y', y)
                 .attr('text-anchor', 'middle')
                 .attr('dominant-baseline', 'middle')
-                .attr('fill', THEME.commonText)
-                .attr('font-size', THEME.fontAttribute)
+                .attr('fill', THEME.simText)
+                .attr('font-size', THEME.fontSim)
                 .text(item);
         });
     }
     
-    // Watermark
-    addWatermark(svg, theme);
+    // Draw left differences in leftmost column
+    if (spec.left_differences && Array.isArray(spec.left_differences)) {
+        const leftDiffStartY = topicY - ((leftDiffCount - 1) * (leftDiffR * 2 + 10)) / 2;
+        spec.left_differences.forEach((item, i) => {
+            const y = leftDiffStartY + i * (leftDiffR * 2 + 10);
+            
+            svg.append('circle')
+                .attr('cx', leftDiffX)
+                .attr('cy', y)
+                .attr('r', leftDiffR)
+                .attr('fill', THEME.diffFill)
+                .attr('stroke', THEME.diffStroke)
+                .attr('stroke-width', THEME.diffStrokeWidth);
+            
+            svg.append('text')
+                .attr('x', leftDiffX)
+                .attr('y', y)
+                .attr('text-anchor', 'middle')
+                .attr('dominant-baseline', 'middle')
+                .attr('fill', THEME.diffText)
+                .attr('font-size', THEME.fontDiff)
+                .text(item);
+        });
+    }
+    
+    // Draw right differences in rightmost column
+    if (spec.right_differences && Array.isArray(spec.right_differences)) {
+        const rightDiffStartY = topicY - ((rightDiffCount - 1) * (rightDiffR * 2 + 10)) / 2;
+        spec.right_differences.forEach((item, i) => {
+            const y = rightDiffStartY + i * (rightDiffR * 2 + 10);
+            
+            svg.append('circle')
+                .attr('cx', rightDiffX)
+                .attr('cy', y)
+                .attr('r', rightDiffR)
+                .attr('fill', THEME.diffFill)
+                .attr('stroke', THEME.diffStroke)
+                .attr('stroke-width', THEME.diffStrokeWidth);
+            
+            svg.append('text')
+                .attr('x', rightDiffX)
+                .attr('y', y)
+                .attr('text-anchor', 'middle')
+                .attr('dominant-baseline', 'middle')
+                .attr('fill', THEME.diffText)
+                .attr('font-size', THEME.fontDiff)
+                .text(item);
+        });
+    }
+    
+    // Add watermark in lower right corner - using smaller size like circle map
+    const watermarkText = 'MindGraph';
+    
+    // Calculate dynamic padding and font size (smaller like circle map for better proportion)
+    const watermarkPadding = Math.max(5, Math.min(15, Math.min(width, height) * 0.01));
+    const watermarkFontSize = Math.max(8, Math.min(16, Math.min(width, height) * 0.02));
+    
+    const watermarkX = width - watermarkPadding;
+    const watermarkY = height - watermarkPadding;
+    
+    svg.append('text')
+        .attr('x', watermarkX)
+        .attr('y', watermarkY)
+        .attr('text-anchor', 'end')
+        .attr('dominant-baseline', 'alphabetic')
+        .attr('fill', '#2c3e50')  // Original dark blue-grey color
+        .attr('font-size', watermarkFontSize)
+        .attr('font-family', 'Inter, Segoe UI, sans-serif')
+        .attr('font-weight', '500')
+        .attr('opacity', 0.8)     // Original 80% opacity
+        .attr('pointer-events', 'none')
+        .text(watermarkText);
 }
 
 // Export functions for module system

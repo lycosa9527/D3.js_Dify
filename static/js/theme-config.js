@@ -170,8 +170,18 @@ function getD3Theme(diagramType) {
     const config = getThemeConfig(diagramType);
     const theme = {};
     
+    // Handle top-level properties (like background)
+    if (config.background) {
+        theme.background = config.background;
+    }
+    
     // Convert nested config to flat D3 format
     Object.keys(config).forEach(category => {
+        // Skip top-level properties (they're not categories)
+        if (typeof config[category] !== 'object' || config[category] === null) {
+            return;
+        }
+        
         const categoryConfig = config[category];
         Object.keys(categoryConfig).forEach(property => {
             const value = categoryConfig[property];
