@@ -26,37 +26,39 @@ function renderBubbleMap(spec, theme = null, dimensions = null) {
     const baseHeight = dimensions?.baseHeight || 500;
     const padding = dimensions?.padding || 40;
     
-    // Load theme
+    // Load theme with proper bubble map colors
     let THEME;
     try {
         if (typeof styleManager !== 'undefined' && styleManager.getTheme) {
             THEME = styleManager.getTheme('bubble_map', theme, theme);
         } else {
             console.warn('Style manager not available, using fallback theme');
-            THEME = {
-                topicFill: '#1976d2',  // Deep blue background
-                topicText: '#ffffff',   // White text for contrast
-                topicStroke: '#000000', // Black border for topic nodes
-                topicStrokeWidth: 3,
-                attributeFill: '#e3f2fd',  // Light blue for attributes
-                attributeText: '#333333', // Dark text for readability
-                attributeStroke: '#000000',  // Black border
-                attributeStrokeWidth: 2,
-                fontTopic: 20,
-                fontAttribute: 14,
-                background: '#ffffff'
-            };
         }
+        
+        // Always use our preferred bubble map colors
+        THEME = {
+            topicFill: '#1976d2',      // Deep blue central topic
+            topicText: '#ffffff',       // White text for contrast
+            topicStroke: '#0d47a1',    // Darker blue border
+            topicStrokeWidth: 3,
+            attributeFill: '#e3f2fd',  // Light blue attribute nodes
+            attributeText: '#333333',   // Dark text for readability
+            attributeStroke: '#1976d2', // Blue border matching topic
+            attributeStrokeWidth: 2,
+            fontTopic: 20,
+            fontAttribute: 14,
+            background: '#ffffff'
+        };
     } catch (error) {
         console.error('Error getting theme from style manager:', error);
         THEME = {
-            topicFill: '#1976d2',
-            topicText: '#ffffff',
-            topicStroke: '#000000',
+            topicFill: '#1976d2',      // Deep blue central topic
+            topicText: '#ffffff',       // White text for contrast
+            topicStroke: '#0d47a1',    // Darker blue border
             topicStrokeWidth: 3,
-            attributeFill: '#e3f2fd',
-            attributeText: '#333333',
-            attributeStroke: '#000000',
+            attributeFill: '#e3f2fd',  // Light blue attribute nodes
+            attributeText: '#333333',   // Dark text for readability
+            attributeStroke: '#1976d2', // Blue border matching topic
             attributeStrokeWidth: 2,
             fontTopic: 20,
             fontAttribute: 14,
