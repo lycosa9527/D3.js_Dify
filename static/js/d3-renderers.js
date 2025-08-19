@@ -185,8 +185,10 @@ function renderDoubleBubbleMap(spec, theme = null, dimensions = null) {
                 attributeFill: '#e3f2fd', // Light blue for feature nodes
                 attributeText: '#333333',
                 attributeStroke: '#000000',  // Black border
-                fontTopic: '18px Inter, sans-serif',
-                fontAttribute: '14px Inter, sans-serif',
+                fontTopic: 18,                 // Use numeric value like original
+                fontSim: 14,                   // Add missing fontSim property
+                fontDiff: 14,                  // Add missing fontDiff property
+                fontAttribute: 14,             // Add missing fontAttribute property
                 background: '#ffffff'
             };
         }
@@ -205,8 +207,10 @@ function renderDoubleBubbleMap(spec, theme = null, dimensions = null) {
             attributeFill: '#e3f2fd', // Light blue for feature nodes
             attributeText: '#333333',
             attributeStroke: '#000000',  // Black border
-            fontTopic: '18px Inter, sans-serif',
-            fontAttribute: '14px Inter, sans-serif',
+            fontTopic: 18,                 // Use numeric value like original
+            fontSim: 14,                   // Add missing fontSim property
+            fontDiff: 14,                  // Add missing fontDiff property
+            fontAttribute: 14,             // Add missing fontAttribute property
             background: '#ffffff'
         };
     }
@@ -480,7 +484,7 @@ function renderBubbleMap(spec, theme = null, dimensions = null) {
     
     // Calculate layout with collision detection
     const centerX = baseWidth / 2;
-    let centerY = baseHeight / 2;
+    const centerY = baseHeight / 2;
     
     // Calculate even distribution around the topic
     const targetDistance = topicR + uniformAttributeR + 50; // Distance from center
@@ -655,7 +659,7 @@ function renderCircleMap(spec, theme = null, dimensions = null) {
     
     // Calculate layout
     const centerX = baseWidth / 2;
-    centerY = baseHeight / 2;
+    const centerY = baseHeight / 2;
     
             // Calculate outer circle radius to accommodate all context circles
         // Context circles should be adjacent to the outer circle but inside it

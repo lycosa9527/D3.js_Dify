@@ -36,7 +36,7 @@ function renderFlowchart(spec, theme = null, dimensions = null) {
                 startText: '#ffffff',
                 startStroke: '#388e3c',
                 startStrokeWidth: 2,
-                processFill: '#2196f3',
+                processFill: '#1976d2',
                 processText: '#ffffff',
                 processStroke: '#1976d2',
                 processStrokeWidth: 2,
@@ -59,7 +59,7 @@ function renderFlowchart(spec, theme = null, dimensions = null) {
             startText: '#ffffff',
             startStroke: '#388e3c',
             startStrokeWidth: 2,
-            processFill: '#2196f3',
+            processFill: '#1976d2',
             processText: '#ffffff',
             processStroke: '#1976d2',
             processStrokeWidth: 2,
@@ -251,16 +251,20 @@ function renderFlowMap(spec, theme = null, dimensions = null) {
     const padding = dimensions?.padding || 40;
 
     const THEME = {
-        titleFill: '#4e79a7',
+        titleFill: '#1976d2',
         titleText: '#333',  // Changed from white to dark gray/black for better readability
-        titleStroke: '#35506b',
+        titleStroke: '#0d47a1',
         titleStrokeWidth: 3,
-        stepFill: '#a7c7e7',
-        stepText: '#333',
-        stepStroke: '#4e79a7',
+        stepFill: '#1976d2',      // Deep blue for step nodes (matching bubble map)
+        stepText: '#ffffff',      // White text for step nodes
+        stepStroke: '#0d47a1',    // Darker blue border for step nodes
         stepStrokeWidth: 2,
-        fontTitle: 18,
-        fontStep: 14,
+        substepFill: '#e3f2fd',   // Light blue for substep nodes (matching bubble map)
+        substepText: '#333333',   // Dark text for substep nodes
+        substepStroke: '#1976d2', // Blue border for substep nodes
+        fontTitle: 20,            // Match bubble map's fontTopic size
+        fontStep: 14,             // Match bubble map's fontAttribute size
+        fontFamily: 'Inter, Segoe UI, sans-serif', // Match bubble map font family
         hPadTitle: 12,
         vPadTitle: 8,
         hPadStep: 14,
@@ -403,14 +407,15 @@ function renderFlowMap(spec, theme = null, dimensions = null) {
         .attr('viewBox', `0 0 ${baseWidth} ${baseHeight}`)
         .attr('preserveAspectRatio', 'xMinYMin meet');
 
-    // Draw title at the top
+    // Draw title at the top - centered to the canvas width, not the step nodes
     const titleY = padding + titleSize.h; // baseline roughly below top padding
     svg.append('text')
-        .attr('x', baseWidth / 2)
+        .attr('x', baseWidth / 2)  // Center to canvas width
         .attr('y', titleY)
         .attr('text-anchor', 'middle')
         .attr('fill', THEME.titleText)
         .attr('font-size', THEME.fontTitle)
+        .attr('font-family', THEME.fontFamily)  // Add font family to match bubble map
         .attr('font-weight', 'bold')
         .text(spec.title);
 
@@ -480,8 +485,8 @@ function renderFlowMap(spec, theme = null, dimensions = null) {
             .attr('width', s.w)
             .attr('height', s.h)
             .attr('rx', THEME.rectRadius)
-            .attr('fill', THEME.stepFill)
-            .attr('stroke', THEME.stepStroke)
+            .attr('fill', THEME.stepFill)        // Deep blue fill
+            .attr('stroke', THEME.stepStroke)    // Darker blue border
             .attr('stroke-width', THEME.stepStrokeWidth);
 
         // Text
@@ -490,8 +495,9 @@ function renderFlowMap(spec, theme = null, dimensions = null) {
             .attr('y', stepYCenter)
             .attr('text-anchor', 'middle')
             .attr('dominant-baseline', 'middle')
-            .attr('fill', THEME.stepText)
+            .attr('fill', THEME.stepText)        // White text
             .attr('font-size', THEME.fontStep)
+            .attr('font-family', THEME.fontFamily)  // Add font family to match bubble map
             .text(s.text);
 
         // Arrow to next step (if there is one)
@@ -558,8 +564,8 @@ function renderFlowMap(spec, theme = null, dimensions = null) {
                 .attr('width', substep.w)
                 .attr('height', substep.h)
                 .attr('rx', Math.max(4, THEME.rectRadius - 2))
-                .attr('fill', d3.color(THEME.stepFill).brighter(0.5))
-                .attr('stroke', THEME.stepStroke)
+                .attr('fill', THEME.substepFill)        // Light blue fill
+                .attr('stroke', THEME.substepStroke)    // Blue border
                 .attr('stroke-width', Math.max(1, THEME.stepStrokeWidth - 1));
             
             // Draw substep text
@@ -568,8 +574,9 @@ function renderFlowMap(spec, theme = null, dimensions = null) {
                 .attr('y', substep.y + substep.h / 2)
                 .attr('text-anchor', 'middle')
                 .attr('dominant-baseline', 'middle')
-                .attr('fill', THEME.stepText)
+                .attr('fill', THEME.substepText)        // Dark text for readability
                 .attr('font-size', Math.max(12, THEME.fontStep - 1))
+                .attr('font-family', THEME.fontFamily)  // Add font family to match bubble map
                 .text(substep.text);
             
             // Draw L-shaped connector from step to substep
@@ -649,7 +656,7 @@ function renderBridgeMap(spec, theme = null, dimensions = null, containerId = 'd
     const THEME = {
         topicFill: '#2c3e50',
         topicText: '#ffffff',
-        analogyFill: '#3498db',
+        analogyFill: '#1976d2',
         analogyText: '#ffffff',
         bridgeColor: '#95a5a6',
         fontTopic: 16,
@@ -746,7 +753,7 @@ function renderMultiFlowMap(spec, theme = null, dimensions = null) {
     const THEME = {
         centralFill: '#2c3e50',
         centralText: '#ffffff',
-        flowFill: '#3498db',
+        flowFill: '#1976d2',
         flowText: '#ffffff',
         stepFill: '#ecf0f1',
         stepText: '#2c3e50',

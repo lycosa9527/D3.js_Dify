@@ -5,6 +5,29 @@ All notable changes to the MindGraph project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.1] - 2025-01-27
+
+### 🎨 **COLOR SCHEME STANDARDIZATION**
+
+#### Bubble Map & Circle Map Color Consistency - FULLY RESOLVED ✅
+- **Unified Color Palette**: Standardized color scheme across bubble map, circle map, and flow renderer
+- **Deep Blue (`#1976d2`)**: Central topics, main processes, step nodes, flow nodes, analogy nodes
+- **Light Blue (`#e3f2fd`)**: Attribute nodes, context/feature nodes, substep nodes
+- **Darker Blue (`#0d47a1`)**: Enhanced borders and strokes for better contrast
+- **Grey (`#666666`)**: Subtle outer circle stroke for elegant visual boundaries
+
+#### Color Updates Implemented
+- **Flow Renderer**: Updated `processFill`, `titleFill`, `analogyFill`, and `flowFill` to deep blue
+- **Circle Map**: Updated topic, context nodes, and strokes to match bubble map colors
+- **Visual Consistency**: All blue diagram types now use identical color palette
+
+#### Technical Improvements
+- **Syntax Validation**: All updated files pass syntax checks with no errors
+- **Theme Integration**: Colors properly integrated with existing theme systems
+- **Cross-Renderer Consistency**: Unified styling between modular and monolithic renderers
+
+---
+
 ## [2.5.0] - 2025-01-27
 
 ### 🎯 **FLOW MAP RENDERING COMPLETELY FIXED**

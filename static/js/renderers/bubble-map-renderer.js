@@ -35,15 +35,15 @@ function renderBubbleMap(spec, theme = null, dimensions = null) {
             console.warn('Style manager not available, using fallback theme');
         }
         
-        // Always use our preferred bubble map colors
+        // Always use our preferred bubble map colors (matching original d3-renderers.js)
         THEME = {
             topicFill: '#1976d2',      // Deep blue central topic
             topicText: '#ffffff',       // White text for contrast
-            topicStroke: '#0d47a1',    // Darker blue border
+            topicStroke: '#000000',     // Black border for topic nodes (matching original)
             topicStrokeWidth: 3,
             attributeFill: '#e3f2fd',  // Light blue attribute nodes
             attributeText: '#333333',   // Dark text for readability
-            attributeStroke: '#1976d2', // Blue border matching topic
+            attributeStroke: '#000000', // Black border (matching original)
             attributeStrokeWidth: 2,
             fontTopic: 20,
             fontAttribute: 14,
@@ -54,11 +54,11 @@ function renderBubbleMap(spec, theme = null, dimensions = null) {
         THEME = {
             topicFill: '#1976d2',      // Deep blue central topic
             topicText: '#ffffff',       // White text for contrast
-            topicStroke: '#0d47a1',    // Darker blue border
+            topicStroke: '#000000',     // Black border for topic nodes (matching original)
             topicStrokeWidth: 3,
             attributeFill: '#e3f2fd',  // Light blue attribute nodes
             attributeText: '#333333',   // Dark text for readability
-            attributeStroke: '#1976d2', // Blue border matching topic
+            attributeStroke: '#000000', // Black border (matching original)
             attributeStrokeWidth: 2,
             fontTopic: 20,
             fontAttribute: 14,
@@ -250,15 +250,15 @@ function renderCircleMap(spec, theme = null, dimensions = null) {
     
     const THEME = {
         outerCircleFill: 'none',
-        outerCircleStroke: '#2c3e50',
+        outerCircleStroke: '#666666',
         outerCircleStrokeWidth: 2,
-        topicFill: '#4e79a7',
+        topicFill: '#1976d2',
         topicText: '#fff',
-        topicStroke: '#35506b',
+        topicStroke: '#0d47a1',
         topicStrokeWidth: 3,
-        contextFill: '#a7c7e7',
+        contextFill: '#e3f2fd',
         contextText: '#333',
-        contextStroke: '#2c3e50',
+        contextStroke: '#1976d2',
         contextStrokeWidth: 2,
         fontTopic: 20,
         fontContext: 14,
@@ -267,63 +267,85 @@ function renderCircleMap(spec, theme = null, dimensions = null) {
     
     // Calculate uniform radius for all context nodes
     const contextRadii = spec.context.map(t => getTextRadius(t, THEME.fontContext, 10));
-    const uniformContextR = Math.max(...contextRadii, 40);
+    const uniformContextR = Math.max(...contextRadii, 30); // Use the largest required radius for all
     
-    const topicR = getTextRadius(spec.topic, THEME.fontTopic, 20);
+    // Calculate topic circle size (made smaller like original)
+    const topicTextRadius = getTextRadius(spec.topic, THEME.fontTopic, 15);
+    const topicR = Math.max(topicTextRadius + 15, 45); // Smaller topic circle at center
     
-    // Calculate circle layout
+    // Calculate layout
     const centerX = baseWidth / 2;
     const centerY = baseHeight / 2;
     
-    // Calculate optimal radius for outer circle
-    const minOuterRadius = topicR + uniformContextR + 60;
-    const outerRadius = Math.max(minOuterRadius, 120);
+    // Calculate outer circle radius to accommodate all context circles
+    // Context circles should be adjacent to the outer circle but inside it
+    // Ensure minimum distance between topic and context circles to prevent overlap
+    // Half a circle size away between topic and context nodes
+    const minDistanceBetweenCircles = topicR + uniformContextR + Math.max(topicR, uniformContextR) * 0.5; // Half a circle size gap
+    const outerCircleR = Math.max(minDistanceBetweenCircles + 60, topicR + uniformContextR + 120); // Space between topic and context circles
     
-    const angleStep = (2 * Math.PI) / spec.context.length;
+    // Position context circles evenly around the inner perimeter of the outer circle
+    const nodes = spec.context.map((ctx, i) => {
+        // Calculate even angle distribution around the circle
+        const angle = (i * 360 / spec.context.length) - 90; // -90 to start from top
+        // Position context circles adjacent to but inside the outer circle
+        const targetDistance = outerCircleR - uniformContextR - 5; // 5px margin from outer circle edge
+        const targetX = centerX + targetDistance * Math.cos(angle * Math.PI / 180);
+        const targetY = centerY + targetDistance * Math.sin(angle * Math.PI / 180);
+        
+        return {
+            id: i,
+            text: ctx,
+            radius: uniformContextR,
+            x: targetX,
+            y: targetY
+        };
+    });
     
-    const width = baseWidth;
-    const height = baseHeight;
+    // Calculate bounds for SVG (outer circle + padding)
+    const minX = centerX - outerCircleR - padding;
+    const maxX = centerX + outerCircleR + padding;
+    const minY = centerY - outerCircleR - padding;
+    const maxY = centerY + outerCircleR + padding;
+    const width = maxX - minX;
+    const height = maxY - minY;
     
     const svg = d3.select('#d3-container').append('svg')
         .attr('width', width)
         .attr('height', height)
-        .attr('viewBox', `0 0 ${width} ${height}`)
-        .attr('preserveAspectRatio', 'xMidYMid meet');
+        .attr('viewBox', `${minX} ${minY} ${width} ${height}`)
+        .attr('preserveAspectRatio', 'xMinYMin meet');
     
-    // Draw outer circle
+    // Draw outer circle first (background boundary)
     svg.append('circle')
         .attr('cx', centerX)
         .attr('cy', centerY)
-        .attr('r', outerRadius)
+        .attr('r', outerCircleR)
         .attr('fill', THEME.outerCircleFill)
         .attr('stroke', THEME.outerCircleStroke)
         .attr('stroke-width', THEME.outerCircleStrokeWidth);
     
-    // Draw context nodes around the circle
-    spec.context.forEach((context, i) => {
-        const angle = i * angleStep - Math.PI / 2; // Start from top
-        const x = centerX + outerRadius * Math.cos(angle);
-        const y = centerY + outerRadius * Math.sin(angle);
-        
+    // Draw context circles around the perimeter
+    nodes.forEach(node => {
         svg.append('circle')
-            .attr('cx', x)
-            .attr('cy', y)
-            .attr('r', uniformContextR)
+            .attr('cx', node.x)
+            .attr('cy', node.y)
+            .attr('r', node.radius)
             .attr('fill', THEME.contextFill)
             .attr('stroke', THEME.contextStroke)
             .attr('stroke-width', THEME.contextStrokeWidth);
         
         svg.append('text')
-            .attr('x', x)
-            .attr('y', y)
+            .attr('x', node.x)
+            .attr('y', node.y)
             .attr('text-anchor', 'middle')
             .attr('dominant-baseline', 'middle')
             .attr('fill', THEME.contextText)
             .attr('font-size', THEME.fontContext)
-            .text(context);
+            .text(node.text);
     });
     
-    // Draw central topic
+    // Draw topic circle at center
     svg.append('circle')
         .attr('cx', centerX)
         .attr('cy', centerY)
@@ -332,6 +354,7 @@ function renderCircleMap(spec, theme = null, dimensions = null) {
         .attr('stroke', THEME.topicStroke)
         .attr('stroke-width', THEME.topicStrokeWidth);
     
+    // Draw topic text on top
     svg.append('text')
         .attr('x', centerX)
         .attr('y', centerY)
@@ -346,11 +369,11 @@ function renderCircleMap(spec, theme = null, dimensions = null) {
     const watermarkText = 'MindGraph';
     
     // Calculate dynamic padding and font size like original
-    const watermarkPadding = Math.max(10, Math.min(20, Math.min(width, height) * 0.02));
-    const watermarkFontSize = Math.max(12, Math.min(20, Math.min(width, height) * 0.025));
+    const watermarkPadding = Math.max(5, Math.min(15, Math.min(width, height) * 0.01));
+    const watermarkFontSize = Math.max(8, Math.min(16, Math.min(width, height) * 0.02));
     
-    const watermarkX = width - watermarkPadding;
-    const watermarkY = height - watermarkPadding;
+    const watermarkX = maxX - watermarkPadding;
+    const watermarkY = maxY - watermarkPadding;
     
     svg.append('text')
         .attr('x', watermarkX)
@@ -427,7 +450,7 @@ function renderDoubleBubbleMap(spec, theme = null, dimensions = null) {
         diffText: '#333333',           // Dark text for differences (matches original)
         diffStroke: '#000000',         // Black border for differences (matches original)
         diffStrokeWidth: 2,
-        fontTopic: '18px Inter, sans-serif',
+        fontTopic: 18,                 // Use numeric value like original
         fontSim: 14,
         fontDiff: 14,
         ...theme
@@ -454,12 +477,12 @@ function renderDoubleBubbleMap(spec, theme = null, dimensions = null) {
     const maxColHeight = Math.max(simColHeight, leftColHeight, rightColHeight, topicR * 2);
     const height = Math.max(baseHeight, maxColHeight + padding * 2);
     
-    // Position columns with 50px spacing between them
+    // Position columns with 50px spacing between them (matching original)
     const columnSpacing = 50;
     const leftDiffX = padding + leftDiffR;
     const leftTopicX = leftDiffX + leftDiffR + columnSpacing + topicR;
-    const similaritiesX = leftTopicX + topicR + columnSpacing + simR;
-    const rightTopicX = similaritiesX + simR + columnSpacing + topicR;
+    const simX = leftTopicX + topicR + columnSpacing + simR;
+    const rightTopicX = simX + simR + columnSpacing + topicR;
     const rightDiffX = rightTopicX + topicR + columnSpacing + rightDiffR;
     
     // Calculate width to accommodate all columns
@@ -496,11 +519,11 @@ function renderDoubleBubbleMap(spec, theme = null, dimensions = null) {
             const y = simStartY + i * (simR * 2 + 12);
             
             // Line from left topic to similarity
-            const dxL = leftTopicX - similaritiesX;
+            const dxL = leftTopicX - simX;
             const dyL = topicY - y;
             const distL = Math.sqrt(dxL * dxL + dyL * dyL);
             if (distL > 0) {
-                const x1L = similaritiesX + (dxL / distL) * simR;
+                const x1L = simX + (dxL / distL) * simR;
                 const y1L = y + (dyL / distL) * simR;
                 const x2L = leftTopicX - (dxL / distL) * topicR;
                 const y2L = topicY - (dyL / distL) * topicR;
@@ -515,11 +538,11 @@ function renderDoubleBubbleMap(spec, theme = null, dimensions = null) {
             }
             
             // Line from right topic to similarity
-            const dxR = rightTopicX - similaritiesX;
+            const dxR = rightTopicX - simX;
             const dyR = topicY - y;
             const distR = Math.sqrt(dxR * dxR + dyR * dyR);
             if (distR > 0) {
-                const x1R = similaritiesX + (dxR / distR) * simR;
+                const x1R = simX + (dxR / distR) * simR;
                 const y1R = y + (dyR / distR) * simR;
                 const x2R = rightTopicX - (dxR / distR) * topicR;
                 const y2R = topicY - (dyR / distR) * topicR;
@@ -634,7 +657,7 @@ function renderDoubleBubbleMap(spec, theme = null, dimensions = null) {
             const y = simStartY + i * (simR * 2 + 12);
             
             svg.append('circle')
-                .attr('cx', similaritiesX)
+                .attr('cx', simX)
                 .attr('cy', y)
                 .attr('r', simR)
                 .attr('fill', THEME.simFill)
@@ -642,7 +665,7 @@ function renderDoubleBubbleMap(spec, theme = null, dimensions = null) {
                 .attr('stroke-width', THEME.simStrokeWidth);
             
             svg.append('text')
-                .attr('x', similaritiesX)
+                .attr('x', simX)
                 .attr('y', y)
                 .attr('text-anchor', 'middle')
                 .attr('dominant-baseline', 'middle')
