@@ -754,17 +754,17 @@ function renderMultiFlowMap(spec, theme = null, dimensions = null) {
     const padding = dimensions?.padding || 40;
     
     const THEME = {
-        eventFill: '#4e79a7',
-        eventText: '#fff',
-        eventStroke: '#35506b',
+        eventFill: '#1976d2',      // Deep blue central event (matching double bubble map topic)
+        eventText: '#ffffff',      // White text for contrast
+        eventStroke: '#0d47a1',    // Darker blue border
         eventStrokeWidth: 3,
-        causeFill: '#ff7f0e',
-        causeText: '#fff',
-        causeStroke: '#cc6600',
+        causeFill: '#e3f2fd',      // Light blue causes (matching flow map substeps)
+        causeText: '#333333',      // Dark text for readability
+        causeStroke: '#1976d2',    // Blue border (matching flow map substeps)
         causeStrokeWidth: 2,
-        effectFill: '#2ca02c',
-        effectText: '#fff',
-        effectStroke: '#1f7a1f',
+        effectFill: '#e3f2fd',     // Light blue effects (matching flow map substeps)
+        effectText: '#333333',     // Dark text for readability
+        effectStroke: '#1976d2',   // Blue border (matching flow map substeps)
         effectStrokeWidth: 2,
         fontEvent: 18,
         fontCause: 14,
@@ -774,8 +774,8 @@ function renderMultiFlowMap(spec, theme = null, dimensions = null) {
         vPadEvent: 8,
         hPadNode: 10,
         vPadNode: 6,
-        linkColorCause: '#ff7f0e',
-        linkColorEffect: '#2ca02c',
+        linkColorCause: '#888888', // Grey links for better visual balance
+        linkColorEffect: '#888888', // Grey links for better visual balance
         ...theme
     };
     
@@ -926,27 +926,6 @@ function renderMultiFlowMap(spec, theme = null, dimensions = null) {
     // Cleanup temporary SVG
     tempSvg.remove();
     
-    // Draw central event (rectangle)
-    svg.append('rect')
-        .attr('x', centerX - eventW / 2)
-        .attr('y', centerY - eventH / 2)
-        .attr('width', eventW)
-        .attr('height', eventH)
-        .attr('rx', THEME.rectRadius)
-        .attr('ry', THEME.rectRadius)
-        .attr('fill', THEME.eventFill)
-        .attr('stroke', THEME.eventStroke)
-        .attr('stroke-width', THEME.eventStrokeWidth);
-    svg.append('text')
-        .attr('x', centerX)
-        .attr('y', centerY)
-        .attr('text-anchor', 'middle')
-        .attr('dominant-baseline', 'middle')
-        .attr('fill', THEME.eventText)
-        .attr('font-size', THEME.fontEvent)
-        .attr('font-weight', 'bold')
-        .text(spec.event);
-    
     // Pre-compute distinct attachment points on the event rectangle to avoid stacking
     const eventLeftSlots = computeEdgeSlots(centerX, centerY, eventW, eventH, causes.length, 'left', 10);
     const eventRightSlots = computeEdgeSlots(centerX, centerY, eventW, eventH, effects.length, 'right', 10);
@@ -1003,10 +982,49 @@ function renderMultiFlowMap(spec, theme = null, dimensions = null) {
         drawArrow(start.x, start.y, end.x, end.y, THEME.linkColorEffect);
     });
     
-    // Watermark
-    if (typeof window.MindGraphUtils !== 'undefined' && window.MindGraphUtils.addWatermark) {
-        window.MindGraphUtils.addWatermark(svg, theme);
-    }
+    // Draw central event (rectangle) - AFTER arrows so it appears on top
+    svg.append('rect')
+        .attr('x', centerX - eventW / 2)
+        .attr('y', centerY - eventH / 2)
+        .attr('width', eventW)
+        .attr('height', eventH)
+        .attr('rx', THEME.rectRadius)
+        .attr('ry', THEME.rectRadius)
+        .attr('fill', THEME.eventFill)
+        .attr('stroke', THEME.eventStroke)
+        .attr('stroke-width', THEME.eventStrokeWidth);
+    svg.append('text')
+        .attr('x', centerX)
+        .attr('y', centerY)
+        .attr('text-anchor', 'middle')
+        .attr('dominant-baseline', 'middle')
+        .attr('fill', THEME.eventText)
+        .attr('font-size', THEME.fontEvent)
+        .attr('font-weight', 'bold')
+        .text(spec.event);
+    
+    // Add watermark in lower right corner - matching bubble map and mind map styling
+    const watermarkText = 'MindGraph';
+    
+    // Calculate dynamic padding and font size like bubble map (increased font size)
+    const watermarkPadding = Math.max(5, Math.min(15, Math.min(finalWidth, finalHeight) * 0.01));
+    const watermarkFontSize = Math.max(12, Math.min(20, Math.min(finalWidth, finalHeight) * 0.025));
+    
+    const watermarkX = finalWidth - watermarkPadding;
+    const watermarkY = finalHeight - watermarkPadding;
+    
+    svg.append('text')
+        .attr('x', watermarkX)
+        .attr('y', watermarkY)
+        .attr('text-anchor', 'end')
+        .attr('dominant-baseline', 'alphabetic')
+        .attr('fill', '#2c3e50')  // Original dark blue-grey color
+        .attr('font-size', watermarkFontSize)
+        .attr('font-family', 'Inter, Segoe UI, sans-serif')
+        .attr('font-weight', '500')
+        .attr('opacity', 0.8)     // Original 80% opacity
+        .attr('pointer-events', 'none')
+        .text(watermarkText);
 }
 
 // Export functions for module system

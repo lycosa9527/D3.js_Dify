@@ -85,24 +85,24 @@ class ModularJavaScriptManager:
             if shared_utils_path.exists():
                 with open(shared_utils_path, 'r', encoding='utf-8') as f:
                     self._module_cache['shared-utilities'] = f.read()
-                logger.info("✅ Shared utilities loaded into cache")
+                logger.info("Shared utilities loaded into cache")
             
             # Load style manager (from parent directory)
             style_manager_path = self.base_path / 'style-manager.js'
             if style_manager_path.exists():
                 with open(style_manager_path, 'r', encoding='utf-8') as f:
                     self._module_cache['style-manager'] = f.read()
-                logger.info("✅ Style manager loaded into cache")
+                logger.info("Style manager loaded into cache")
             
             # Load theme config (from parent directory)
             theme_config_path = self.base_path / 'theme-config.js'
             if theme_config_path.exists():
                 with open(theme_config_path, 'r', encoding='utf-8') as f:
                     self._module_cache['theme-config'] = f.read()
-                logger.info("✅ Theme config loaded into cache")
+                logger.info("Theme config loaded into cache")
                 
         except Exception as e:
-            logger.error(f"❌ Failed to load core modules: {e}")
+            logger.error(f"Failed to load core modules: {e}")
             raise
     
     def normalize_graph_type(self, graph_type: str) -> str:
@@ -175,7 +175,7 @@ class ModularJavaScriptManager:
                 file_path = self.renderers_path / filename
             
             if not file_path.exists():
-                logger.warning(f"⚠️ Module file not found: {file_path}")
+                logger.warning(f"Module file not found: {file_path}")
                 return ""
             
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -188,7 +188,7 @@ class ModularJavaScriptManager:
             return content
             
         except Exception as e:
-            logger.error(f"❌ Failed to load module {module_name}: {e}")
+            logger.error(f"Failed to load module {module_name}: {e}")
             return ""
     
     def get_javascript_for_graph_type(self, graph_type: str) -> Tuple[str, Dict]:
@@ -249,7 +249,7 @@ class ModularJavaScriptManager:
             'cache_hit_rate': round((self._cache_stats['cache_hits'] / max(1, self._cache_stats['cache_hits'] + self._cache_stats['cache_misses'])) * 100, 1)
         }
         
-        logger.info(f"📦 Generated JavaScript for {graph_type}: {stats['total_size_kb']}KB ({stats['savings_percent']}% savings)")
+        logger.info(f"Generated JavaScript for {graph_type}: {stats['total_size_kb']}KB")
         
         return combined_js, stats
     
@@ -290,7 +290,7 @@ class ModularJavaScriptManager:
             'most_used_types': {}
         }
         
-        logger.info("🧹 Module cache cleared (core modules retained)")
+        logger.info("Module cache cleared (core modules retained)")
     
     def preload_common_modules(self):
         """Preload commonly used renderer modules."""
@@ -302,11 +302,11 @@ class ModularJavaScriptManager:
                 for module in modules:
                     if module not in self._module_cache:
                         self.load_module(module)
-                logger.info(f"✅ Preloaded modules for {graph_type}")
+                logger.info(f"Preloaded modules for {graph_type}")
             except Exception as e:
-                logger.warning(f"⚠️ Failed to preload modules for {graph_type}: {e}")
+                logger.warning(f"Failed to preload modules for {graph_type}: {e}")
         
-        logger.info("🚀 Common modules preloaded successfully")
+        logger.info("Common modules preloaded successfully")
 
 
 # Global instance for use throughout the application

@@ -41,9 +41,9 @@ function renderBubbleMap(spec, theme = null, dimensions = null) {
             topicText: '#ffffff',       // White text for contrast
             topicStroke: '#000000',     // Black border for topic nodes (matching original)
             topicStrokeWidth: 3,
-            attributeFill: '#e3f2fd',  // Light blue attribute nodes
+            attributeFill: '#e3f2fd',  // Light blue attribute nodes (matching flow map substeps)
             attributeText: '#333333',   // Dark text for readability
-            attributeStroke: '#000000', // Black border (matching original)
+            attributeStroke: '#1976d2', // Blue border (matching flow map substeps)
             attributeStrokeWidth: 2,
             fontTopic: 20,
             fontAttribute: 14,
@@ -56,9 +56,9 @@ function renderBubbleMap(spec, theme = null, dimensions = null) {
             topicText: '#ffffff',       // White text for contrast
             topicStroke: '#000000',     // Black border for topic nodes (matching original)
             topicStrokeWidth: 3,
-            attributeFill: '#e3f2fd',  // Light blue attribute nodes
+            attributeFill: '#e3f2fd',  // Light blue attribute nodes (matching flow map substeps)
             attributeText: '#333333',   // Dark text for readability
-            attributeStroke: '#000000', // Black border (matching original)
+            attributeStroke: '#1976d2', // Blue border (matching flow map substeps)
             attributeStrokeWidth: 2,
             fontTopic: 20,
             fontAttribute: 14,
@@ -442,13 +442,13 @@ function renderDoubleBubbleMap(spec, theme = null, dimensions = null) {
         topicText: '#ffffff',          // White text for both topics (matches original)
         topicStroke: '#000000',        // Black border for both topics (matches original)
         topicStrokeWidth: 2,
-        simFill: '#e3f2fd',            // Light blue for similarities (matches original)
+        simFill: '#e3f2fd',            // Light blue for similarities (matching flow map substeps)
         simText: '#333333',            // Dark text for similarities (matches original)
-        simStroke: '#000000',          // Black border for similarities (matches original)
+        simStroke: '#1976d2',          // Blue border (matching flow map substeps)
         simStrokeWidth: 2,
-        diffFill: '#e3f2fd',           // Light blue for differences (matches original)
+        diffFill: '#e3f2fd',           // Light blue for differences (matching flow map substeps)
         diffText: '#333333',           // Dark text for differences (matches original)
-        diffStroke: '#000000',         // Black border for differences (matches original)
+        diffStroke: '#1976d2',         // Blue border (matching flow map substeps)
         diffStrokeWidth: 2,
         fontTopic: 18,                 // Use numeric value like original
         fontSim: 14,

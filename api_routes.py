@@ -492,11 +492,7 @@ def generate_png():
                 # Get graph-type-specific JavaScript content with performance stats
                 combined_js, modular_stats = get_javascript_for_graph_type(graph_type)
                 
-                logger.info(f"📦 Modular JavaScript loaded for {graph_type}:")
-                logger.info(f"   - Modules: {modular_stats['module_names']}")
-                logger.info(f"   - Size: {modular_stats['total_size_kb']}KB")
-                logger.info(f"   - Savings: {modular_stats['savings_percent']}% ({modular_stats['savings_bytes']} bytes)")
-                logger.info(f"   - Cache hit rate: {modular_stats['cache_hit_rate']}%")
+                logger.info(f"Modular JavaScript loaded for {graph_type}: {modular_stats['module_names']} ({modular_stats['total_size_kb']}KB)")
                 
                 # Split the combined JS for compatibility with existing HTML template
                 import re
@@ -528,25 +524,30 @@ def generate_png():
                             combined_renderers += section + "\n\n"
                 
             except Exception as e:
-                logger.error(f"❌ Failed to load modular JavaScript for {graph_type}: {e}")
+                logger.error(f"Failed to load modular JavaScript for {graph_type}: {e}")
                 # Fallback to lazy cache if modular loading fails
                 try:
-                    logger.warning("🔄 Falling back to lazy cache manager...")
+                    logger.warning("Falling back to lazy cache manager...")
                     from static.js.lazy_cache_manager import get_theme_config, get_style_manager, get_d3_renderers
                     combined_renderers = get_d3_renderers()
                     theme_config = get_theme_config()
                     style_manager = get_style_manager()
-                    logger.warning(f"📦 Fallback: Using full d3-renderers.js ({round(len(combined_renderers)/1024, 1)}KB)")
+                    logger.warning(f"Fallback: Using full d3-renderers.js ({round(len(combined_renderers)/1024, 1)}KB)")
                 except Exception as fallback_error:
-                    logger.error(f"❌ Fallback also failed: {fallback_error}")
+                    logger.error(f"Fallback also failed: {fallback_error}")
                     raise
             
-            # Log spec data for debugging
-            logger.info(f"Spec data keys: {list(spec.keys()) if isinstance(spec, dict) else 'Not a dict'}")
-            if isinstance(spec, dict) and 'svg_data' in spec:
-                logger.info(f"SVG data keys: {list(spec['svg_data'].keys()) if isinstance(spec['svg_data'], dict) else 'Not a dict'}")
-                if isinstance(spec['svg_data'], dict) and 'elements' in spec['svg_data']:
-                    logger.info(f"Number of SVG elements: {len(spec['svg_data']['elements'])}")
+            # Log spec data summary for debugging
+            if isinstance(spec, dict):
+                spec_keys = list(spec.keys())
+                svg_info = ""
+                if 'svg_data' in spec and isinstance(spec['svg_data'], dict):
+                    svg_keys = list(spec['svg_data'].keys())
+                    element_count = len(spec['svg_data'].get('elements', [])) if 'elements' in spec['svg_data'] else 0
+                    svg_info = f", svg_data: {svg_keys}, elements: {element_count}"
+                logger.info(f"Spec data: {spec_keys}{svg_info}")
+            else:
+                logger.info("Spec data: Not a dict")
             
             # Calculate optimized dimensions for different graph types
             dimensions = config.get_d3_dimensions()
@@ -618,10 +619,10 @@ def generate_png():
             try:
                 with open(d3_js_path, 'r', encoding='utf-8') as f:
                     d3_js_content = f.read()
-                logger.info(f"✅ Local D3.js loaded for PNG generation ({len(d3_js_content)} bytes)")
+                logger.info(f"Local D3.js loaded for PNG generation ({len(d3_js_content)} bytes)")
                 d3_script_tag = f'<script>{d3_js_content}</script>'
             except Exception as e:
-                logger.error(f"❌ Failed to load local D3.js: {e}")
+                logger.error(f"Failed to load local D3.js: {e}")
                 raise RuntimeError(f"Local D3.js library not available at {d3_js_path}. Please ensure the D3.js bundle is properly installed.")
             
             html = f'''
@@ -763,15 +764,11 @@ def generate_png():
                 page.on("console", lambda msg: console_messages.append(f"{msg.type}: {msg.text}"))
                 page.on("pageerror", lambda err: page_errors.append(str(err)))
                 
-                # Log HTML size for debugging
+                # Set timeout and log HTML size if large
                 html_size = len(html)
-                logger.info(f"HTML content size: {html_size} characters")
-                if html_size > 100000:  # Log if HTML is very large
-                    logger.warning(f"Large HTML content: {html_size} characters")
-                
-                # Set timeout to 60 seconds for all content
                 timeout_ms = 60000  # 60 seconds for all content
-                logger.info(f"Setting page content timeout to {timeout_ms}ms for HTML size {html_size}")
+                if html_size > 100000:  # Log if HTML is very large
+                    logger.info(f"Large HTML content: {html_size} characters, setting timeout to {timeout_ms}ms")
                 
                 await page.set_content(html, timeout=timeout_ms)
                 
@@ -779,19 +776,15 @@ def generate_png():
                 logger.info("Waiting for initial rendering...")
                 await asyncio.sleep(3.0)
                 
-                # Log all console messages and errors
-                for msg in console_messages:
-                    logger.info(f"Browser console: {msg}")
-                for error in page_errors:
-                    logger.error(f"Browser error: {error}")
-                
-                # Wait a bit more for rendering to complete
-                logger.info("Waiting for final rendering...")
-                await asyncio.sleep(2.0)
+                # Log console messages and errors (consolidated)
+                if console_messages:
+                    logger.info(f"Browser console messages: {len(console_messages)}")
+                if page_errors:
+                    logger.error(f"Browser errors: {len(page_errors)}")
                 
                 # Wait for rendering to complete
                 logger.info("Waiting for rendering to complete...")
-                await asyncio.sleep(2.0)  # Standard wait time
+                await asyncio.sleep(4.0)  # Combined wait time
                 
                 # Wait for SVG element to be created with timeout
                 try:
