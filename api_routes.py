@@ -613,10 +613,21 @@ def generate_png():
                 except Exception as e:
                     logger.warning(f"Failed to apply recommended dimensions: {e}")
             
+            # Read local D3.js content for embedding in PNG generation
+            d3_js_path = os.path.join(os.path.dirname(__file__), 'static', 'js', 'd3.min.js')
+            try:
+                with open(d3_js_path, 'r', encoding='utf-8') as f:
+                    d3_js_content = f.read()
+                logger.info(f"✅ Local D3.js loaded for PNG generation ({len(d3_js_content)} bytes)")
+                d3_script_tag = f'<script>{d3_js_content}</script>'
+            except Exception as e:
+                logger.error(f"❌ Failed to load local D3.js: {e}")
+                raise RuntimeError(f"Local D3.js library not available at {d3_js_path}. Please ensure the D3.js bundle is properly installed.")
+            
             html = f'''
             <html><head>
             <meta charset="utf-8">
-            <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+            {d3_script_tag}
             <style>
                 body {{ margin:0; background:#fff; }}
                 #d3-container {{ 

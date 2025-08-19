@@ -45,7 +45,7 @@ STATIC_D3_RENDERERS = '/static/js/d3-renderers.js'
 STATIC_STYLE_MANAGER = '/static/js/style-manager.js'
 
 # CSS and External Resources
-EXTERNAL_D3_CDN = 'https://cdn.jsdelivr.net/npm/d3@7'
+EXTERNAL_D3_CDN = '/static/js/d3.min.js'  # Now points to local D3.js
 EXTERNAL_GOOGLE_FONTS = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap'
 
 # ============================================================================

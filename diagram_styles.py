@@ -265,17 +265,6 @@ DEFAULT_STYLES = {
     },
     
     # Common Diagrams
-    "venn_diagram": {
-        "setColors": ["#4e79a7", "#f28e2b", "#e15759", "#76b7b2"],
-        "setTextColor": "#ffffff",
-        "setFontSize": 16,
-        "setFontWeight": "bold",
-        "intersectionColor": "#a7c7e7",
-        "intersectionTextColor": "#2c3e50",
-        "intersectionFontSize": 14,
-        "stroke": "#2c3e50",
-        "strokeWidth": 2
-    },
     
     "flowchart": {
         "startEndColor": "#4e79a7",

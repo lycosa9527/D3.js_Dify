@@ -39,16 +39,15 @@ class ModularJavaScriptManager:
             'double_bubble_map': ['shared-utilities', 'bubble-map-renderer'],
             'circle_map': ['shared-utilities', 'bubble-map-renderer'],
             'tree_map': ['shared-utilities', 'tree-renderer'],
-            'org_chart': ['shared-utilities', 'tree-renderer'],
-            'fishbone': ['shared-utilities', 'tree-renderer'],
+
             'flowchart': ['shared-utilities', 'flow-renderer'],
             'flow_map': ['shared-utilities', 'flow-renderer'],
             'multi_flow_map': ['shared-utilities', 'flow-renderer'],
             'bridge_map': ['shared-utilities', 'flow-renderer'],
-            'venn_diagram': ['shared-utilities', 'venn-renderer'],
+
             'timeline': ['shared-utilities', 'timeline-renderer'],
             'brace_map': ['shared-utilities', 'brace-renderer'],
-            'semantic_web': ['shared-utilities', 'semantic-renderer']
+
         }
         
         # File path mapping
@@ -59,7 +58,7 @@ class ModularJavaScriptManager:
             'bubble-map-renderer': 'bubble-map-renderer.js',
             'tree-renderer': 'tree-renderer.js',
             'flow-renderer': 'flow-renderer.js',
-            'venn-renderer': 'venn-renderer.js',
+
             'timeline-renderer': 'timeline-renderer.js',
             'brace-renderer': 'brace-renderer.js',
             'semantic-renderer': 'semantic-renderer.js'
@@ -128,9 +127,9 @@ class ModularJavaScriptManager:
             'bubblemap': 'bubble_map',
             'doublebubblemap': 'double_bubble_map',
             'treemap': 'tree_map',
-            'orgchart': 'org_chart',
+
             'flow_chart': 'flowchart',
-            'venndiagram': 'venn_diagram'
+
         }
         
         return aliases.get(type_normalized, type_normalized)

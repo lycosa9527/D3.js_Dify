@@ -260,15 +260,11 @@ function renderGraph(type, spec, theme = null, dimensions = null) {
         case 'mindmap':
             renderMindMap(spec, integratedTheme, dimensions);
             break;
-        case 'venn_diagram':
-            renderVennDiagram(spec, integratedTheme, dimensions);
-            break;
+
         case 'flowchart':
             renderFlowchart(spec, integratedTheme, dimensions);
             break;
-        case 'org_chart':
-            renderOrgChart(spec, integratedTheme, dimensions);
-            break;
+
         case 'timeline':
             renderTimeline(spec, integratedTheme, dimensions);
             break;
@@ -293,12 +289,8 @@ function renderGraph(type, spec, theme = null, dimensions = null) {
         case 'multi_flow_map':
             renderMultiFlowMap(spec, integratedTheme, dimensions);
             break;
-        case 'fishbone_diagram':
-            renderFishboneDiagram(spec, integratedTheme, dimensions);
-            break;
-        case 'semantic_web':
-            renderSemanticWeb(spec, integratedTheme, dimensions);
-            break;
+
+
         default:
             console.error(`Unknown graph type: ${type}`);
             d3.select('#d3-container').append('div')

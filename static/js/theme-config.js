@@ -95,25 +95,7 @@ const THEME_CONFIG = {
         }
     },
 
-    // Venn Diagram Configuration
-    venn_diagram: {
-        set: {
-            fill: '#4e79a7',          // Blue background
-            text: '#ffffff',           // White text for contrast
-            stroke: '#000000',         // Black border
-            strokeWidth: 2,            // Border thickness
-            fontSize: 16,              // Font size in pixels
-            fontWeight: 'bold'         // Font weight
-        },
-        intersection: {
-            fill: '#e3f2fd',          // Light blue background
-            text: '#333333',           // Dark text for readability
-            stroke: '#000000',         // Black border
-            strokeWidth: 1,            // Border thickness
-            fontSize: 14,              // Font size in pixels
-            fontWeight: 'normal'       // Font weight
-        }
-    },
+
 
     // Flowchart Configuration
     flowchart: {

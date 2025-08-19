@@ -218,29 +218,7 @@ CONCEPT_MAP_PARTS_GENERATION_ZH = """
 # SEMANTIC WEB PROMPTS
 # ============================================================================
 
-SEMANTIC_WEB_GENERATION_EN = """
-Please generate a JSON specification for a semantic web for the following user request.
 
-Request: {user_prompt}
-
-Please output a JSON object containing the following fields:
-topic: "Central concept"
-branches: [{{"name": "Branch1", "children": [{{"name": "Branch1.1"}}]}}]
-
-Please ensure the JSON format is correct, do not include any code block markers.
-"""
-
-SEMANTIC_WEB_GENERATION_ZH = """
-请为以下用户需求生成一个语义网的JSON规范。
-
-需求：{user_prompt}
-
-请输出一个包含以下字段的JSON对象：
-topic: "中心概念"
-branches: [{{"name": "分支1", "children": [{{"name": "分支1.1"}}]}}]
-
-请确保JSON格式正确，不要包含任何代码块标记。
-"""
 
 # ============================================================================
 # ENHANCED CONCEPT MAP PROMPTS (IMPROVED VERSION)
@@ -1751,8 +1729,7 @@ CONCEPT_MAP_PROMPTS = {
     "concept_map_keys_generation_zh": CONCEPT_MAP_KEYS_GENERATION_ZH,
     "concept_map_parts_generation_en": CONCEPT_MAP_PARTS_GENERATION_EN,
     "concept_map_parts_generation_zh": CONCEPT_MAP_PARTS_GENERATION_ZH,
-    "semantic_web_generation_en": SEMANTIC_WEB_GENERATION_EN,
-    "semantic_web_generation_zh": SEMANTIC_WEB_GENERATION_ZH,
+
     
     # NEW: True 3-stage workflow prompts (RECOMMENDED)
     "concept_map_topic_extraction_en": CONCEPT_MAP_TOPIC_EXTRACTION_EN,

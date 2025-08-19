@@ -32,8 +32,7 @@ class DynamicRendererLoader {
             
             // Tree and Hierarchical
             'tree_map': 'tree-renderer',
-            'org_chart': 'tree-renderer',
-            'fishbone': 'tree-renderer',
+
             
             // Flow and Process
             'flowchart': 'flow-renderer',
@@ -42,10 +41,10 @@ class DynamicRendererLoader {
             'bridge_map': 'flow-renderer',
             
             // Specialized
-            'venn_diagram': 'venn-renderer',
+
             'timeline': 'timeline-renderer',
             'brace_map': 'brace-renderer',
-            'semantic_web': 'semantic-renderer'
+
         };
         
         // Initialize shared utilities loader
@@ -185,9 +184,9 @@ class DynamicRendererLoader {
             'bubblemap': 'bubble_map',
             'doubleBubbleMap': 'double_bubble_map',
             'treemap': 'tree_map',
-            'orgchart': 'org_chart',
+
             'flow_chart': 'flowchart',
-            'venndiagram': 'venn_diagram'
+
         };
         
         return aliases[type] || type;

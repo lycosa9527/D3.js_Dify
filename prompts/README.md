@@ -20,9 +20,8 @@ This directory contains a unified, organized system for all diagram prompts in t
 prompts/
 ├── __init__.py              # Main registry and interface
 ├── thinking_maps.py         # All 8 Thinking Maps® prompts
-├── concept_maps.py          # Concept map and semantic web prompts
-├── mind_maps.py            # Mind map and radial mind map prompts
-├── common_diagrams.py       # Venn, flowchart, fishbone, org chart, timeline
+├── concept_maps.py          # Concept map prompts
+├── mind_maps.py            # Mind map prompts
 └── README.md               # This documentation
 ```
 
@@ -73,18 +72,12 @@ def generate_graph_spec(user_prompt: str, graph_type: str, language: str = 'zh')
 
 ### Concept Maps
 - **Concept Map** - Show relationships between concepts
-- **Semantic Web** - Create a web of related concepts
 
 ### Mind Maps
 - **Mind Map** - Organize ideas around a central topic
 - **Radial Mind Map** - Create a radial mind map structure
 
-### Common Diagrams
-- **Venn Diagram** - Show overlapping sets
-- **Fishbone Diagram** - Analyze cause and effect
-- **Flowchart** - Show process flow
-- **Org Chart** - Show organizational structure
-- **Timeline** - Show chronological events
+
 
 ## 🔧 API Reference
 

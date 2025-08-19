@@ -9,14 +9,13 @@ from typing import Dict, Any
 from .thinking_maps import THINKING_MAP_PROMPTS
 from .concept_maps import CONCEPT_MAP_PROMPTS
 from .mind_maps import MIND_MAP_PROMPTS
-from .common_diagrams import COMMON_DIAGRAM_PROMPTS
+
 
 # Unified prompt registry
 PROMPT_REGISTRY = {
     **THINKING_MAP_PROMPTS,
     **CONCEPT_MAP_PROMPTS,
     **MIND_MAP_PROMPTS,
-    **COMMON_DIAGRAM_PROMPTS
 }
 
 def get_prompt(diagram_type: str, language: str = 'en', prompt_type: str = 'generation') -> str:

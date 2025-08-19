@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Multi Flow Map Renderer</title>
+    <script src="static/js/d3.min.js"></script>
+    <style>
+        body { margin: 0; background: #fff; }
+        #d3-container {
+            width: 100%;
+            height: 100vh;
+            display: block;
+            background: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <div id="d3-container"></div>
+
+    <!-- Load the renderers -->
+    <script src="static/js/renderers/shared-utilities.js"></script>
+    <script src="static/js/style-manager.js"></script>
+    <script src="static/js/renderers/flow-renderer.js"></script>
+
+    <script>
+        // Test the multi flow map renderer with the correct spec format
+        const testSpec = {
+            event: "辛亥革命",
+            causes: ["清朝统治腐败", "民族危机加深", "革命思想传播", "革命组织建立"],
+            effects: ["推翻清朝统治", "建立中华民国", "结束封建制度", "开启民主革命"]
+        };
+
+        const testTheme = {
+            eventColor: '#4e79a7',
+            causeColor: '#ff7f0e',
+            effectColor: '#2ca02c',
+            background: '#ffffff'
+        };
+
+        const testDimensions = {
+            baseWidth: 900,
+            baseHeight: 500,
+            padding: 40
+        };
+
+        // Test the renderer
+        console.log('Testing multi flow map renderer with spec:', testSpec);
+        renderMultiFlowMap(testSpec, testTheme, testDimensions);
+    </script>
+</body>
+</html>

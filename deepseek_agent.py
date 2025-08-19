@@ -663,7 +663,7 @@ def classify_diagram_type_for_development(user_prompt: str, language: str = 'en'
         
         # Concept Maps
         "concept_map": "Show relationships between concepts",
-        "semantic_web": "Create a web of related concepts",
+
         
         # Mind Maps
         "mindmap": "Organize ideas around a central topic",
@@ -809,8 +809,6 @@ Your output:
             return "tree_map"
         elif any(word in user_prompt.lower() for word in ["concept", "relationship", "概念", "关系", "概念图"]):
             return "concept_map"
-        elif any(word in user_prompt.lower() for word in ["semantic", "network", "语义", "网络", "语义网络"]):
-            return "semantic_web"
 
         else:
             return "bubble_map"  # Default fallback
@@ -837,8 +835,6 @@ Your output:
             return "tree_map"
         elif any(word in user_prompt.lower() for word in ["concept", "relationship", "概念", "关系", "概念图"]):
             return "concept_map"
-        elif any(word in user_prompt.lower() for word in ["semantic", "network", "语义", "网络", "语义网络"]):
-            return "semantic_web"
 
         else:
             return "bubble_map"

@@ -109,24 +109,7 @@ class StyleManager {
                 fontBranch: 16,
                 fontLeaf: 14
             },
-            venn_diagram: {
-                set1Fill: '#ff6b6b',   // Red for first set
-                set1Text: '#ffffff',    // White text
-                set1Stroke: '#c44569',  // Darker red border
-                set1StrokeWidth: 2,
-                set2Fill: '#4ecdc4',   // Teal for second set
-                set2Text: '#ffffff',    // White text
-                set2Stroke: '#26a69a',  // Darker teal border
-                set2StrokeWidth: 2,
-                set3Fill: '#45b7d1',   // Blue for third set
-                set3Text: '#ffffff',    // White text
-                set3Stroke: '#2c3e50',  // Darker blue border
-                set3StrokeWidth: 2,
-                intersectionFill: '#a8e6cf', // Light green for intersections
-                intersectionText: '#333333',  // Dark text
-                fontSet: 16,
-                fontIntersection: 14
-            },
+
             flowchart: {
                 startFill: '#4caf50',   // Green for start
                 startText: '#ffffff',    // White text
@@ -301,7 +284,7 @@ class StyleManager {
                 updated.mainBranchText = this.getContrastingTextColor(colorTheme.secondary);
                 break;
             case 'tree_map':
-            case 'venn_diagram':
+
             case 'flowchart':
                 updated.nodeFill = colorTheme.primary;
                 updated.nodeText = this.getContrastingTextColor(colorTheme.primary);

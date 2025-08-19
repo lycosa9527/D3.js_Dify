@@ -616,7 +616,7 @@ def extract_topics_and_styles_from_prompt_qwen(user_prompt: str, language: str =
 
 # 概念图 (Concept Maps)
 - concept_map: 显示概念之间的关系
-- semantic_web: 创建相关概念的网络
+
 
 # 思维导图 (Mind Maps)
 - mindmap: 围绕中心主题组织想法
@@ -639,7 +639,7 @@ def extract_topics_and_styles_from_prompt_qwen(user_prompt: str, language: str =
 - 动物分类的树形图 → tree_map
 - 心脏像泵一样的桥形图 → bridge_map
 - 教育系统的概念图 → concept_map
-- 创建语义网络 → semantic_web
+
 - 制作思维导图 → mindmap
 
 
@@ -685,7 +685,7 @@ Available diagram types:
 
 # Concept Maps
 - concept_map: Show relationships between concepts
-- semantic_web: Create a web of related concepts
+
 
 # Mind Maps
 - mindmap: Organize ideas around a central topic
@@ -709,7 +709,7 @@ Key Examples:
 - Classify animal species → tree_map
 - Heart is like a pump analogy → bridge_map
 - Map education concepts → concept_map
-- Create semantic network → semantic_web
+
 - Make mind map → mindmap
 
 
