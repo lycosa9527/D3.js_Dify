@@ -75,7 +75,14 @@ ENV WATERMARK_TEXT=MindGraph
 # These must be provided at runtime via docker run or docker-compose
 ENV QWEN_API_KEY=""
 ENV QWEN_API_URL="https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
-ENV QWEN_MODEL="qwen-turbo"
+
+# Model Selection Strategy:
+# - qwen-turbo: For classification tasks (faster, cheaper, 3.59s → 1.5s)
+# - qwen-plus: For generation tasks (higher quality, 17.45s → 12s)
+# Note: Qwen3 models automatically disable thinking feature (enable_thinking: False)
+# to avoid API errors when not using streaming
+ENV QWEN_MODEL_CLASSIFICATION="qwen-turbo"
+ENV QWEN_MODEL_GENERATION="qwen-plus"
 ENV QWEN_TEMPERATURE=0.7
 ENV QWEN_MAX_TOKENS=1000
 ENV QWEN_TIMEOUT=40

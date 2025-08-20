@@ -71,10 +71,17 @@ class DeepSeekClient:
 class QwenClient:
     """Async client for Qwen LLM API"""
     
-    def __init__(self):
+    def __init__(self, model_type='classification'):
+        """
+        Initialize QwenClient with specific model type
+        
+        Args:
+            model_type (str): 'classification' for qwen-turbo, 'generation' for qwen-plus
+        """
         self.api_url = config.QWEN_API_URL
         self.api_key = config.QWEN_API_KEY
         self.timeout = 30  # seconds
+        self.model_type = model_type
         
     async def chat_completion(self, messages: List[Dict], temperature: float = 0.7, 
                             max_tokens: int = 1000) -> str:
@@ -90,12 +97,21 @@ class QwenClient:
             Response content as string
         """
         try:
+            # Select appropriate model based on task type
+            if self.model_type == 'classification':
+                model_name = config.QWEN_MODEL_CLASSIFICATION
+            else:  # generation
+                model_name = config.QWEN_MODEL_GENERATION
+                
             payload = {
-                "model": "qwen-plus",
+                "model": model_name,
                 "messages": messages,
                 "temperature": temperature,
                 "max_tokens": max_tokens,
-                "stream": False
+                "stream": False,
+                # Qwen3 models require enable_thinking: False when not using streaming
+                # to avoid API errors. This is automatically included in all Qwen API calls.
+                "extra_body": {"enable_thinking": False}
             }
             
             headers = {
@@ -124,12 +140,16 @@ class QwenClient:
 # Global client instances
 try:
     deepseek_client = DeepSeekClient()
-    qwen_client = QwenClient()
+    qwen_client_classification = QwenClient(model_type='classification')  # qwen-turbo
+    qwen_client_generation = QwenClient(model_type='generation')         # qwen-plus
+    qwen_client = qwen_client_classification  # Legacy compatibility
     logger.info("LLM clients initialized successfully")
 except Exception as e:
     logger.warning(f"Failed to initialize LLM clients: {e}")
     deepseek_client = None
     qwen_client = None
+    qwen_client_classification = None
+    qwen_client_generation = None
 
 def get_llm_client():
     """Get an available LLM client for testing purposes."""

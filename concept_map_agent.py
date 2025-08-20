@@ -1316,10 +1316,9 @@ class ConceptMapAgent:
             logger.info(f"Categorizing concepts for topic: {topic}")
             
             # Import the LLM client from agent module  
-            from agent import QwenLLM
-            llm = QwenLLM()
-            
-            response = llm._call(categorization_prompt)
+            from agent import llm_generation
+            # Use generation model for concept categorization (high quality)
+            response = llm_generation._call(categorization_prompt)
             if not response:
                 return None
             

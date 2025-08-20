@@ -28,9 +28,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-from langchain.llms.base import LLM
 from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
 import requests
 import yaml
 from config import config
@@ -132,18 +130,45 @@ def get_llm_timing_stats():
 # Removed detect_explicit_diagram_intent - redundant with LLM classification
 
 
-class QwenLLM(LLM):
+class QwenLLM:
     """
-    Custom LangChain LLM wrapper for Qwen API with timing tracking
+    Simple Qwen API client with timing tracking - no LangChain inheritance issues
     """
+    
+    def __init__(self, model_type='classification'):
+        """
+        Initialize QwenLLM with specific model type
+        
+        Args:
+            model_type (str): 'classification' for qwen-turbo, 'generation' for qwen-plus
+        """
+        self.model_type = model_type
+    
     def _call(self, prompt, stop=None):
+        """
+        Make API call to Qwen with timing tracking
+        
+        Args:
+            prompt (str): The prompt to send
+            stop (optional): Not used, kept for compatibility
+            
+        Returns:
+            str: Response content from Qwen
+        """
         start_time = time.time()
-        logger.info(f"QwenLLM._call() - Model: {config.QWEN_MODEL}")
+        
+        # Select appropriate model based on task type
+        if self.model_type == 'classification':
+            model_name = config.QWEN_MODEL_CLASSIFICATION
+            data = config.get_qwen_classification_data(prompt)
+        else:  # generation
+            model_name = config.QWEN_MODEL_GENERATION
+            data = config.get_qwen_generation_data(prompt)
+        
+        logger.info(f"QwenLLM._call() - Model: {model_name} ({self.model_type})")
         logger.debug(f"Prompt sent to Qwen:\n{prompt[:1000]}{'...' if len(prompt) > 1000 else ''}")
 
         headers = config.get_qwen_headers()
-        data = config.get_qwen_data(prompt)
-
         logger.info(f"Making request to: {config.QWEN_API_URL}")
         try:
             resp = requests.post(
@@ -180,13 +205,40 @@ class QwenLLM(LLM):
             logger.error(f"QwenLLM API call failed: {e} - Time: {call_time:.3f}s", exc_info=True)
             raise
 
+    def invoke(self, variables):
+        """
+        LangChain compatibility method - converts variables to prompt and calls _call
+        
+        Args:
+            variables (dict): Variables for the prompt template
+            
+        Returns:
+            str: Response from Qwen
+        """
+        # Extract the prompt from variables (assuming it's a PromptTemplate)
+        if hasattr(variables, 'template'):
+            # It's a PromptTemplate object
+            prompt = variables.template
+        elif isinstance(variables, dict) and 'user_prompt' in variables:
+            # It's a variables dict with user_prompt
+            prompt = variables['user_prompt']
+        else:
+            # Fallback - try to convert to string
+            prompt = str(variables)
+        
+        return self._call(prompt)
+
     @property
     def _llm_type(self):
-        return "qwen"
+        return f"qwen-{self.model_type}"
 
 
-# Initialize the LLM instance
-llm = QwenLLM()
+# Initialize the LLM instances for different tasks
+llm_classification = QwenLLM(model_type='classification')  # qwen-turbo for fast classification
+llm_generation = QwenLLM(model_type='generation')         # qwen-plus for high-quality generation
+
+# Legacy compatibility - default to classification model
+llm = llm_classification
 
 
 # ============================================================================
@@ -353,28 +405,36 @@ right_differences:
 
 def create_topic_extraction_chain(language='zh'):
     """
-    Create a LangChain RunnableSequence for topic extraction
+    Create a simple chain for topic extraction
     Args:
         language (str): Language for the prompt ('zh' or 'en')
     Returns:
-        RunnableSequence: Configured sequence for topic extraction
+        function: Function that can be called with user_prompt
     """
     prompt = topic_extraction_prompt_zh if language == 'zh' else topic_extraction_prompt_en
-    # Return a RunnableSequence (prompt | llm)
-    return prompt | llm
+    
+    def extract_topics(user_prompt):
+        """Extract topics using the classification model"""
+        return llm_classification._call(prompt.format(user_prompt=user_prompt))
+    
+    return extract_topics
 
 
 def create_characteristics_chain(language='zh'):
     """
-    Create a LangChain RunnableSequence for characteristics generation
+    Create a simple chain for characteristics generation
     Args:
         language (str): Language for the prompt ('zh' or 'en')
     Returns:
-        RunnableSequence: Configured sequence for characteristics generation
+        function: Function that can be called with topic1 and topic2
     """
     prompt = characteristics_prompt_zh if language == 'zh' else characteristics_prompt_en
-    # Return a RunnableSequence (prompt | llm)
-    return prompt | llm
+    
+    def generate_characteristics(topic1, topic2):
+        """Generate characteristics using the generation model"""
+        return llm_generation._call(prompt.format(topic1=topic1, topic2=topic2))
+    
+    return generate_characteristics
 
 
 # ============================================================================
@@ -445,7 +505,8 @@ def generate_graph_spec(user_prompt: str, graph_type: str, language: str = 'zh')
             input_variables=["user_prompt"],
             template=safe_template
         )
-        yaml_text = (prompt | llm).invoke({"user_prompt": user_prompt})
+        # Use generation model for graph specification generation (high quality)
+        yaml_text = llm_generation._call(prompt.format(user_prompt=user_prompt))
         # Some LLM clients return dict-like objects; ensure string
         try:
             raw_text = yaml_text if isinstance(yaml_text, str) else str(yaml_text)
@@ -543,9 +604,9 @@ def validate_agent_setup():
     timer.start()
     
     try:
-        # Test LLM connection
+        # Test LLM connection using classification model (fast/cheap)
         test_prompt = "Test"
-        llm._call(test_prompt)
+        llm_classification._call(test_prompt)
         logger.info("Agent: LLM connection validated")
         return True
     except TimeoutError:
@@ -741,7 +802,10 @@ User request: {{user_prompt}}
     )
     
     try:
-        result = (prompt | llm).invoke({"user_prompt": user_prompt})
+        # Use classification model for style/topic extraction (fast/cheap)
+        # Format the prompt template with the user prompt
+        formatted_prompt = prompt.format(user_prompt=user_prompt)
+        result = llm_classification._call(formatted_prompt)
         cleaned_result = clean_llm_response(result)
         parsed_result = validate_and_parse_json(cleaned_result)
         
@@ -871,8 +935,13 @@ def _invoke_llm_prompt(prompt_template: str, variables: dict) -> str:
     for k in variables.keys():
         placeholder = f"<<{k.upper()}>>"
         safe_template = safe_template.replace(placeholder, f"{{{k}}}")
-    pt = PromptTemplate(input_variables=list(variables.keys()), template=safe_template)
-    raw = (pt | llm).invoke(variables)
+    # Use generation model for concept map generation tasks (high quality)
+    # Format the template with variables and call the LLM directly
+    formatted_prompt = safe_template
+    for key, value in variables.items():
+        formatted_prompt = formatted_prompt.replace(f"{{{key}}}", str(value))
+    
+    raw = llm_generation._call(formatted_prompt)
     return raw if isinstance(raw, str) else str(raw)
 
 

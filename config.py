@@ -64,7 +64,18 @@ class Config:
         return self._get_cached_value('QWEN_API_URL', 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions')
     @property
     def QWEN_MODEL(self):
-        return self._get_cached_value('QWEN_MODEL', 'qwen-turbo')
+        """Legacy property - now defaults to classification model for backward compatibility"""
+        return self.QWEN_MODEL_CLASSIFICATION
+    
+    @property
+    def QWEN_MODEL_CLASSIFICATION(self):
+        """Model for classification tasks (faster, cheaper)"""
+        return self._get_cached_value('QWEN_MODEL_CLASSIFICATION', 'qwen-turbo')
+    
+    @property
+    def QWEN_MODEL_GENERATION(self):
+        """Model for generation tasks (higher quality)"""
+        return self._get_cached_value('QWEN_MODEL_GENERATION', 'qwen-plus')
     @property
     def QWEN_TEMPERATURE(self):
         try:
@@ -354,7 +365,9 @@ class Config:
         """
         logger.info("📋 Configuration Summary:")
         logger.info(f"   Flask: {self.HOST}:{self.PORT} (Debug: {self.DEBUG})")
-        logger.info(f"   Qwen: {self.QWEN_MODEL} at {self.QWEN_API_URL}")
+        logger.info(f"   Qwen: {self.QWEN_API_URL}")
+        logger.info(f"     - Classification: {self.QWEN_MODEL_CLASSIFICATION} (fast/cheap)")
+        logger.info(f"     - Generation: {self.QWEN_MODEL_GENERATION} (high quality)")
         
 
         
@@ -378,22 +391,40 @@ class Config:
             'Authorization': f'Bearer {self.QWEN_API_KEY}'
         }
     
-    def get_qwen_data(self, prompt: str) -> dict:
+    def get_qwen_data(self, prompt: str, model: str = None) -> dict:
         """
         Get request data for Qwen API calls.
         
         Args:
             prompt (str): The prompt to send to Qwen
+            model (str): Model to use (None for default classification model)
             
         Returns:
             dict: Request data dictionary for Qwen API
+            
+        Note:
+            Qwen3 models require enable_thinking: False when not using streaming
+            to avoid API errors. This is automatically included in the payload.
         """
+        if model is None:
+            model = self.QWEN_MODEL_CLASSIFICATION
+        
         return {
-            'model': self.QWEN_MODEL,
+            'model': model,
             'messages': [{'role': 'user', 'content': prompt}],
             'temperature': self.QWEN_TEMPERATURE,
-            'max_tokens': self.QWEN_MAX_TOKENS
+            'max_tokens': self.QWEN_MAX_TOKENS,
+            # Qwen3 models require enable_thinking: False when not using streaming
+            'extra_body': {'enable_thinking': False}
         }
+    
+    def get_qwen_classification_data(self, prompt: str) -> dict:
+        """Get request data for Qwen classification tasks (fast/cheap)"""
+        return self.get_qwen_data(prompt, self.QWEN_MODEL_CLASSIFICATION)
+    
+    def get_qwen_generation_data(self, prompt: str) -> dict:
+        """Get request data for Qwen generation tasks (high quality)"""
+        return self.get_qwen_data(prompt, self.QWEN_MODEL_GENERATION)
     
 
     
