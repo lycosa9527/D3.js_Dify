@@ -1,34 +1,38 @@
 /**
  * Brace Map Renderer for MindGraph
+ * Renders hierarchical brace maps with professional styling
  * 
- * This module contains the brace map rendering function.
- * Requires: shared-utilities.js, style-manager.js
- * 
- * Performance Impact: Loads only ~30KB instead of full 213KB
+ * @version 2.4.0
+ * @author MindGraph Team
  */
 
-// Check if shared utilities are available
+// Verify MindGraphUtils availability
 if (typeof window.MindGraphUtils === 'undefined') {
-    console.error('MindGraphUtils not found! Please load shared-utilities.js first.');
+    console.warn('MindGraphUtils not found! Please load shared-utilities.js first.');
 }
 
-// Import required functions from shared utilities - with error handling
-let getTextRadius, addWatermark, getThemeDefaults;
-try {
-    getTextRadius = window.MindGraphUtils.getTextRadius;
-    addWatermark = window.MindGraphUtils.addWatermark;
-    getThemeDefaults = window.MindGraphUtils.getThemeDefaults;
-    
-    if (typeof getTextRadius !== 'function' || typeof addWatermark !== 'function' || typeof getThemeDefaults !== 'function') {
-        throw new Error('Required functions not available from shared-utilities.js');
-    }
-} catch (error) {
-    console.error('Failed to import required functions:', error);
-    throw new Error('Failed to import required functions from shared-utilities.js');
+// Verify required functions are available
+if (typeof window.getTextRadius !== 'function') {
+    throw new Error('getTextRadius function not available globally');
 }
+
+if (typeof window.addWatermark !== 'function') {
+    throw new Error('addWatermark function not available globally');
+}
+
+// getThemeDefaults is optional - create fallback if needed
+if (window.MindGraphUtils && typeof window.MindGraphUtils.getThemeDefaults === 'function') {
+    // Use it from MindGraphUtils if available
+} else {
+    // Create a fallback function
+    window.getThemeDefaults = () => ({});
+}
+
+// Required functions verified successfully
 
 function renderBraceMap(spec, theme = null, dimensions = null) {
-    console.log('renderBraceMap called with:', { spec, theme, dimensions });
+    try {
+        // Function called with spec, theme, and dimensions
     
     // Clear container and ensure it exists
     const container = d3.select('#d3-container');
@@ -38,11 +42,58 @@ function renderBraceMap(spec, theme = null, dimensions = null) {
     }
     container.html('');
     
-    // Validate spec
-    if (!spec || !spec.topic || !Array.isArray(spec.parts)) {
-        d3.select('#d3-container').append('div').style('color', 'red').text('Invalid spec for brace map');
+    // Validate spec with comprehensive error handling
+    
+    if (!spec) {
+        console.error('Brace renderer: Spec is null or undefined');
+        d3.select('#d3-container').append('div').style('color', 'red').text('Error: No specification provided for brace map');
         return;
     }
+    
+    // Handle different spec structures - check if data is nested
+    let actualSpec = spec;
+    
+    // Check for enhanced spec format (with agent data preserved)
+    if (spec.topic && Array.isArray(spec.parts) && spec._agent_result) {
+        actualSpec = spec; // Use the original spec directly
+    }
+    // Check if we have the original spec structure directly
+    else if (spec.topic && Array.isArray(spec.parts)) {
+        actualSpec = spec;
+    }
+    // Legacy format handling for backward compatibility
+    else if (spec.success && spec.data) {
+        actualSpec = spec.data;
+    } else if (spec.success && spec.svg_data && spec.svg_data.elements) {
+        actualSpec = spec.svg_data;
+    } else if (spec.success && spec.layout_data && spec.layout_data.nodes) {
+        // Extract the original spec from layout data if available
+        actualSpec = {
+            topic: spec.layout_data.nodes.find(n => n.node_type === 'topic')?.text || 'Topic',
+            parts: spec.layout_data.nodes.filter(n => n.node_type === 'part').map(n => ({
+                name: n.text,
+                subparts: spec.layout_data.nodes.filter(sn => sn.node_type === 'subpart' && sn.part_index === n.part_index).map(sn => ({
+                    name: sn.text
+                }))
+            }))
+        };
+    }
+    
+    // Using actual spec for rendering
+    
+    if (!actualSpec.topic) {
+        console.error('Brace renderer: Spec missing topic:', actualSpec);
+        d3.select('#d3-container').append('div').style('color', 'red').text('Error: Brace map specification missing topic');
+        return;
+    }
+    
+    if (!Array.isArray(actualSpec.parts)) {
+        console.error('Brace renderer: Spec parts is not an array:', actualSpec.parts);
+        d3.select('#d3-container').append('div').style('color', 'red').text('Error: Brace map specification missing parts array');
+        return;
+    }
+    
+    // Spec validation passed, starting rendering
     
     // Use provided dimensions only - no hardcoded defaults
     const padding = dimensions?.padding || 40;
@@ -55,18 +106,18 @@ function renderBraceMap(spec, theme = null, dimensions = null) {
         } else {
             console.warn('Style manager not available, using fallback theme');
             THEME = {
-                topicFill: '#e3f2fd',
-                topicText: '#000000',
-                topicStroke: '#35506b',
-                partFill: '#f5f5f5',
+                topicFill: '#1976d2',
+                topicText: '#ffffff',
+                topicStroke: '#0d47a1',
+                partFill: '#e3f2fd',
                 partText: '#333333',
-                partStroke: '#cccccc',
-                subpartFill: '#fafafa',
-                subpartText: '#666666',
-                subpartStroke: '#dddddd',
-                fontTopic: '24px Inter, sans-serif',
-                fontPart: '18px Inter, sans-serif',
-                fontSubpart: '14px Inter, sans-serif',
+                partStroke: '#4e79a7',
+                subpartFill: '#bbdefb',
+                subpartText: '#333333',
+                subpartStroke: '#90caf9',
+                fontTopic: '24px Inter, Segoe UI, sans-serif',
+                fontPart: '18px Inter, Segoe UI, sans-serif',
+                fontSubpart: '14px Inter, Segoe UI, sans-serif',
                 background: '#ffffff',
                 braceColor: '#666666',
                 braceWidth: 3
@@ -75,23 +126,25 @@ function renderBraceMap(spec, theme = null, dimensions = null) {
     } catch (error) {
         console.error('Error getting theme from style manager:', error);
         THEME = {
-            topicFill: '#e3f2fd',
-            topicText: '#000000',
-            topicStroke: '#35506b',
-            partFill: '#f5f5f5',
+            topicFill: '#1976d2',
+            topicText: '#ffffff',
+            topicStroke: '#0d47a1',
+            partFill: '#e3f2fd',
             partText: '#333333',
-            partStroke: '#cccccc',
-            subpartFill: '#fafafa',
-            subpartText: '#666666',
-            subpartStroke: '#dddddd',
-            fontTopic: '24px Inter, sans-serif',
-            fontPart: '18px Inter, sans-serif',
-            fontSubpart: '14px Inter, sans-serif',
+            partStroke: '#4e79a7',
+            subpartFill: '#bbdefb',
+            subpartText: '#333333',
+            subpartStroke: '#90caf9',
+            fontTopic: '24px Inter, Segoe UI, sans-serif',
+            fontPart: '18px Inter, Segoe UI, sans-serif',
+            fontSubpart: '14px Inter, Segoe UI, sans-serif',
             background: '#ffffff',
             braceColor: '#666666',
             braceWidth: 3
         };
     }
+    
+    // Theme loaded successfully
     
     // Apply background if specified
     if (theme && theme.background) {
@@ -106,7 +159,7 @@ function renderBraceMap(spec, theme = null, dimensions = null) {
             return { size: parseInt(match[1], 10), family: match[2] };
         }
         // Fallbacks
-        return { size: 16, family: 'Inter, sans-serif' };
+        return { size: 16, family: 'Inter, Segoe UI, sans-serif' };
     }
     
     function measureTextWidth(text, fontSpec, fontWeight = 'normal') {
@@ -144,71 +197,81 @@ function renderBraceMap(spec, theme = null, dimensions = null) {
     }
 
     // Measure content widths
-    const topicWidth = measureTextWidth(spec.topic, THEME.fontTopic, 'bold');
-    const partWidths = (spec.parts || []).map(p => measureTextWidth(p?.name || '', THEME.fontPart, 'bold'));
+    const topicWidth = measureTextWidth(actualSpec.topic, THEME.fontTopic, 'bold');
+    const partWidths = (actualSpec.parts || []).map(p => measureTextWidth(p?.name || '', THEME.fontPart, 'bold'));
     const maxPartWidth = Math.max(100, ...(partWidths.length ? partWidths : [0]));
     const subpartWidths = [];
-    (spec.parts || []).forEach(p => {
+    (actualSpec.parts || []).forEach(p => {
         (p.subparts || []).forEach(sp => {
             subpartWidths.push(measureTextWidth(sp?.name || '', THEME.fontSubpart));
         });
     });
     const maxSubpartWidth = Math.max(100, ...(subpartWidths.length ? subpartWidths : [0]));
 
-    // Define brace corridors and inter-column spacing
-    const mainBraceCorridor = 40;  // space allocated for the big brace visuals
-    const smallBraceCorridor = 30; // space allocated for small braces
-    const columnSpacing = 30;      // spacing between columns
-
-    // Compute X positions by summing column widths and spacing
-    let runningX = padding;
-    const column1X = runningX + topicWidth / 2; // Topic
-    runningX += topicWidth + columnSpacing;
-    const column2X = runningX + mainBraceCorridor / 2; // Big brace
-    runningX += mainBraceCorridor + columnSpacing;
-    const column3X = runningX + maxPartWidth / 2; // Parts
-    runningX += maxPartWidth + columnSpacing;
-    const column4X = runningX + smallBraceCorridor / 2; // Small brace
-    runningX += smallBraceCorridor + columnSpacing;
-    const column5X = runningX + maxSubpartWidth / 2; // Subparts
-    runningX += maxSubpartWidth;
+    // Define spacing and dimensions
+    const topicPadding = 16;
+    const partPadding = 12;
+    const subpartPadding = 8;
+    const braceWidth = 3;
+    const braceSpacing = 30;
+    const columnSpacing = 45;
     
-    // Calculate vertical spacing
-    const partSpacing = 80;
-    const subpartSpacing = 30;
+    // Calculate dimensions
+    const topicBoxWidth = topicWidth + topicPadding * 2;
+    const topicBoxHeight = parseFontSpec(THEME.fontTopic).size + topicPadding * 2;
+    const partBoxHeight = parseFontSpec(THEME.fontPart).size + partPadding * 2;
+    const subpartBoxHeight = parseFontSpec(THEME.fontSubpart).size + subpartPadding * 2;
     
-    // Calculate total required height
-    const { size: topicFontSize } = parseFontSpec(THEME.fontTopic);
-    const { size: partFontSize } = parseFontSpec(THEME.fontPart);
-    const { size: subpartFontSize } = parseFontSpec(THEME.fontSubpart);
-    
-    const topicHeight = topicFontSize + 20;
-    let totalPartsHeight = 0;
-    (spec.parts || []).forEach(part => {
-        totalPartsHeight += partFontSize + 20; // part height
+    // Calculate total height needed
+    let totalHeight = topicBoxHeight + 40; // Topic + spacing
+    (actualSpec.parts || []).forEach(part => {
+        totalHeight += partBoxHeight + 20; // Part height + spacing
         if (part.subparts && part.subparts.length > 0) {
-            totalPartsHeight += (part.subparts.length * (subpartFontSize + 10)) + 10; // subparts height
+            totalHeight += (part.subparts.length * (subpartBoxHeight + 10)) + 20; // Subparts + spacing
         }
-        totalPartsHeight += partSpacing; // spacing between parts
     });
+    totalHeight += 40; // Bottom padding
     
-    const totalHeight = padding + topicHeight + 60 + totalPartsHeight + padding;
-    const totalWidth = runningX + padding;
+    // Calculate the actual content area (excluding top/bottom padding)
+    const contentStartY = 30; // Parts start at this Y position
+    const contentEndY = totalHeight - 40; // Bottom padding
+    const contentCenterY = contentStartY + (contentEndY - contentStartY) / 2;
+    
+    // Calculate total width needed - FIXED: Ensure adequate width for all elements
+    const topicSectionWidth = topicBoxWidth + 30; // Topic + padding
+    const partsSectionWidth = maxPartWidth + 30; // Parts + padding
+    const subpartsSectionWidth = maxSubpartWidth + 30; // Subparts + padding
+    const totalWidth = Math.max(
+        topicSectionWidth + columnSpacing + partsSectionWidth + columnSpacing + subpartsSectionWidth + 60, // Content width
+        750 // Minimum width for readability
+    );
     
     // Create SVG with calculated dimensions
+    
     const svg = d3.select('#d3-container').append('svg')
         .attr('width', totalWidth)
         .attr('height', totalHeight)
         .attr('viewBox', `0 0 ${totalWidth} ${totalHeight}`)
         .attr('preserveAspectRatio', 'xMinYMin meet');
-
-    // Draw topic
-    const topicY = padding + topicHeight / 2;
-    const topicBoxWidth = topicWidth + 40;
-    const topicBoxHeight = topicHeight;
     
+    // SVG created successfully
+
+    // Add grey background - FIXED: Add background rectangle
     svg.append('rect')
-        .attr('x', column1X - topicBoxWidth / 2)
+        .attr('x', 0)
+        .attr('y', 0)
+        .attr('width', totalWidth)
+        .attr('height', totalHeight)
+        .attr('fill', THEME.background || '#f8f9fa')
+        .attr('stroke', 'none');
+
+    // Position topic in center-left, centered relative to actual content
+    const topicX = 30;
+    const topicY = contentCenterY;
+    
+    // Draw topic
+    svg.append('rect')
+        .attr('x', topicX)
         .attr('y', topicY - topicBoxHeight / 2)
         .attr('width', topicBoxWidth)
         .attr('height', topicBoxHeight)
@@ -218,29 +281,43 @@ function renderBraceMap(spec, theme = null, dimensions = null) {
         .attr('stroke-width', 2);
     
     svg.append('text')
-        .attr('x', column1X)
+        .attr('x', topicX + topicBoxWidth / 2)
         .attr('y', topicY)
         .attr('text-anchor', 'middle')
         .attr('dominant-baseline', 'middle')
         .attr('fill', THEME.topicText)
-        .attr('font-size', topicFontSize)
+        .attr('font-size', parseFontSpec(THEME.fontTopic).size)
         .attr('font-family', parseFontSpec(THEME.fontTopic).family)
         .attr('font-weight', 'bold')
-        .text(spec.topic);
+        .text(actualSpec.topic);
 
-    // Draw parts and subparts
-    let currentY = topicY + topicHeight / 2 + 60;
-    const partsStartY = currentY;
+    // Position parts to the right of topic - FIXED: Better positioning
+    const partsStartX = topicX + topicBoxWidth + columnSpacing;
+    const partsStartY = 30;
+    let currentY = partsStartY;
     let partsEndY = currentY;
 
-    (spec.parts || []).forEach((part, partIndex) => {
-        const partY = currentY + partFontSize / 2 + 10;
-        const partBoxWidth = maxPartWidth + 20;
-        const partBoxHeight = partFontSize + 20;
+    (actualSpec.parts || []).forEach((part, partIndex) => {
+        // Calculate the starting Y position for this part's section
+        const partSectionStartY = currentY;
+        
+        // First, calculate the total height needed for this part's section (including subparts)
+        let partSectionHeight = partBoxHeight + 20; // Part height + spacing
+        
+        if (part.subparts && part.subparts.length > 0) {
+            partSectionHeight += (part.subparts.length * (subpartBoxHeight + 10)) + 20; // Subparts + spacing
+        }
+        
+        // Calculate the center Y position for this part's entire section
+        const partSectionCenterY = partSectionStartY + partSectionHeight / 2;
+        
+        // Position the part at the center of its section
+        const partY = partSectionCenterY;
+        const partBoxWidth = Math.max(maxPartWidth, measureTextWidth(part?.name || '', THEME.fontPart, 'bold')) + partPadding * 2;
         
         // Draw part
         svg.append('rect')
-            .attr('x', column3X - partBoxWidth / 2)
+            .attr('x', partsStartX)
             .attr('y', partY - partBoxHeight / 2)
             .attr('width', partBoxWidth)
             .attr('height', partBoxHeight)
@@ -250,29 +327,30 @@ function renderBraceMap(spec, theme = null, dimensions = null) {
             .attr('stroke-width', 1);
         
         svg.append('text')
-            .attr('x', column3X)
+            .attr('x', partsStartX + partBoxWidth / 2)
             .attr('y', partY)
             .attr('text-anchor', 'middle')
             .attr('dominant-baseline', 'middle')
             .attr('fill', THEME.partText)
-            .attr('font-size', partFontSize)
+            .attr('font-size', parseFontSpec(THEME.fontPart).size)
             .attr('font-family', parseFontSpec(THEME.fontPart).family)
             .attr('font-weight', 'bold')
             .text(part.name || '');
 
-        currentY += partBoxHeight + 10;
+        // Move to next position for subparts
+        currentY += partBoxHeight + 20;
 
         // Draw subparts if they exist
         if (part.subparts && part.subparts.length > 0) {
+            const subpartsStartX = partsStartX + partBoxWidth + columnSpacing;
             const subpartsStartY = currentY;
             
             part.subparts.forEach((subpart, subpartIndex) => {
-                const subpartY = currentY + subpartFontSize / 2 + 5;
-                const subpartBoxWidth = maxSubpartWidth + 15;
-                const subpartBoxHeight = subpartFontSize + 10;
+                const subpartY = currentY + subpartBoxHeight / 2;
+                const subpartBoxWidth = Math.max(maxSubpartWidth, measureTextWidth(subpart?.name || '', THEME.fontSubpart)) + subpartPadding * 2;
                 
                 svg.append('rect')
-                    .attr('x', column5X - subpartBoxWidth / 2)
+                    .attr('x', subpartsStartX)
                     .attr('y', subpartY - subpartBoxHeight / 2)
                     .attr('width', subpartBoxWidth)
                     .attr('height', subpartBoxHeight)
@@ -282,54 +360,60 @@ function renderBraceMap(spec, theme = null, dimensions = null) {
                     .attr('stroke-width', 1);
                 
                 svg.append('text')
-                    .attr('x', column5X)
+                    .attr('x', subpartsStartX + subpartBoxWidth / 2)
                     .attr('y', subpartY)
                     .attr('text-anchor', 'middle')
                     .attr('dominant-baseline', 'middle')
                     .attr('fill', THEME.subpartText)
-                    .attr('font-size', subpartFontSize)
+                    .attr('font-size', parseFontSpec(THEME.fontSubpart).size)
                     .attr('font-family', parseFontSpec(THEME.fontSubpart).family)
                     .text(subpart.name || '');
 
-                currentY += subpartBoxHeight + 5;
+                currentY += subpartBoxHeight + 10;
             });
 
-            // Draw small brace for subparts
-            const subpartsEndY = currentY - 5;
+            // Draw small brace connecting part to subparts - FIXED: Better positioning
+            const subpartsEndY = currentY - 10;
             if (subpartsEndY > subpartsStartY) {
+                const braceX = partsStartX + partBoxWidth + (columnSpacing - braceSpacing) / 2;
+                // Drawing small brace connecting part to subparts
+                
                 const bracePath = buildCurlyBracePath(
-                    column4X - smallBraceCorridor / 2,
+                    braceX,
                     subpartsStartY,
                     subpartsEndY,
-                    smallBraceCorridor / 2
+                    braceSpacing / 2
                 );
                 
                 svg.append('path')
                     .attr('d', bracePath)
                     .attr('fill', 'none')
-                    .attr('stroke', THEME.braceColor)
-                    .attr('stroke-width', THEME.braceWidth / 2);
+                    .attr('stroke', THEME.braceColor || '#666666')
+                    .attr('stroke-width', braceWidth / 2);
             }
         }
-
-        currentY += partSpacing;
-        partsEndY = currentY - partSpacing / 2;
+        
+        currentY += 20; // Extra spacing between parts
+        partsEndY = currentY - 20;
     });
 
-    // Draw main brace
+    // Draw main brace connecting topic to parts - FIXED: Better positioning and visibility
     if (partsEndY > partsStartY) {
+        const mainBraceX = topicX + topicBoxWidth + (columnSpacing - braceSpacing) / 2;
+        // Drawing main brace connecting topic to parts
+        
         const bracePath = buildCurlyBracePath(
-            column2X - mainBraceCorridor / 2,
+            mainBraceX,
             partsStartY,
             partsEndY,
-            mainBraceCorridor / 2
+            braceSpacing / 2
         );
         
         svg.append('path')
             .attr('d', bracePath)
             .attr('fill', 'none')
-            .attr('stroke', THEME.braceColor)
-            .attr('stroke-width', THEME.braceWidth);
+            .attr('stroke', THEME.braceColor || '#666666')
+            .attr('stroke-width', braceWidth);
     }
 
     // Watermark - matching mindmap style
@@ -379,6 +463,13 @@ function renderBraceMap(spec, theme = null, dimensions = null) {
         .attr('opacity', 0.8)     // Original 80% opacity
         .attr('pointer-events', 'none')
         .text(watermarkText);
+    
+    // Rendering completed successfully
+    } catch (error) {
+        console.error('Brace renderer: Error during rendering:', error);
+        console.error('Brace renderer: Error stack:', error.stack);
+        d3.select('#d3-container').append('div').style('color', 'red').text('Error: ' + error.message);
+    }
 }
 
 // Export functions for module system
@@ -387,6 +478,15 @@ if (typeof window !== 'undefined') {
     window.BraceRenderer = {
         renderBraceMap
     };
+    
+    // CRITICAL FIX: Also expose renderBraceMap globally for backward compatibility
+    // This prevents the "renderBraceMap is not defined" error
+    if (typeof window.renderBraceMap === 'undefined') {
+        window.renderBraceMap = renderBraceMap;
+        // renderBraceMap exported globally for backward compatibility
+    }
+    
+    // BraceRenderer exported to window.BraceRenderer
 } else if (typeof module !== 'undefined' && module.exports) {
     // Node.js environment
     module.exports = {

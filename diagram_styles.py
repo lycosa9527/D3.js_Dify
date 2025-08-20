@@ -476,8 +476,8 @@ if __name__ == "__main__":
     # Example: Parse style from user prompt
     prompt = "Create a bubble map with a blue background, red topic nodes, font size 20, and use the classic dark theme"
     user_style = parse_style_from_prompt(prompt)
-    print("Parsed style:", user_style)
+    # Parsed style successfully
     
     # Example: Get merged style
     final_style = get_style("bubble_map", user_style, "classic", "dark")
-    print("Final style:", final_style) 
+    # Final style merged successfully 

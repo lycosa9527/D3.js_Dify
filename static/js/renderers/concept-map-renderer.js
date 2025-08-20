@@ -38,10 +38,7 @@ function renderConceptMap(spec, theme = null, dimensions = null) {
     const baseHeight = dimensions?.baseHeight || 1000;
     const padding = dimensions?.padding || 80;
     
-    console.log('D3.js renderConceptMap starting dimensions:', {
-        received: dimensions,
-        using: {width: baseWidth, height: baseHeight, padding: padding}
-    });
+    // Starting concept map rendering with specified dimensions
     
     // Check for configurable padding from spec
     const earlyConfig = spec._config || {};
@@ -180,7 +177,7 @@ function renderConceptMap(spec, theme = null, dimensions = null) {
 
     // Check if we have pre-computed positions from the backend
     if (spec._layout && spec._layout.positions) {
-        console.log('Using backend-calculated positions');
+        // Using backend-calculated positions
         const positions = spec._layout.positions;
         const extents = spec._layout.extents;
         
@@ -190,7 +187,7 @@ function renderConceptMap(spec, theme = null, dimensions = null) {
             width = Math.ceil(extents.maxX - extents.minX + 2 * margin);
             height = Math.ceil(extents.maxY - extents.minY + 2 * margin);
             svg.attr('width', width).attr('height', height);
-            console.log('Updated canvas size based on backend extents:', {width, height});
+            // Updated canvas size based on backend extents
         }
         
         const boxes = {};
@@ -246,7 +243,7 @@ function renderConceptMap(spec, theme = null, dimensions = null) {
         });
     } else {
         // Fallback to D3 force layout
-        console.log('Falling back to D3 force layout');
+        // Falling back to D3 force layout
         renderConceptMapWithForceLayout(spec, svg, THEME, width, height);
     }
     

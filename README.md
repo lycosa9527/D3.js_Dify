@@ -1,6 +1,6 @@
 # MindGraph - AI-Powered Data Visualization Generator
 
-[![Version](https://img.shields.io/badge/version-2.5.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.5.2-blue.svg)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Flask](https://img.shields.io/badge/Flask-3.0+-green.svg)](https://flask.palletsprojects.com/)
 [![D3.js](https://img.shields.io/badge/D3.js-7.0+-orange.svg)](https://d3js.org/)
@@ -222,6 +222,12 @@ const theme = {
 
 ## 🚀 Performance & Optimization
 
+### Recent Performance Improvements
+- **Bridge Map Rendering**: Fixed layout issues and styling inconsistencies
+- **Code Quality**: Comprehensive cleanup with production-ready codebase
+- **Local Font System**: Eliminated external CDN dependencies for offline operation
+- **Browser Pooling**: Identified 20.6% performance improvement opportunity (pending implementation)
+
 ### Rendering Performance
 - **Optimized Algorithms**: Streamlined positioning and layout calculations
 - **Memory Efficiency**: Better resource usage in complex operations
@@ -257,9 +263,11 @@ const theme = {
 
 ## 📈 Version History
 
-### Version 2.4.0 (Current)
-- **Complete Diagram System**: All core diagram types finished
-- **Revolutionary Mind Map Positioning**: Clockwise system with perfect branch alignment
+### Version 2.5.2 (Current)
+- **Complete Diagram System**: All core diagram types finished and fully optimized
+- **Bridge Map Rendering**: Completely fixed with correct horizontal layout and styling
+- **Code Quality**: Comprehensive cleanup with production-ready codebase
+- **Local Font System**: Offline operation with embedded Inter font family
 - **Production Ready**: Enterprise-grade system suitable for business use
 - **Enhanced Performance**: Optimized algorithms and improved stability
 

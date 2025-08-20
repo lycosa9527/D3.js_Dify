@@ -63,9 +63,9 @@ function renderMindMap(spec, theme = null, dimensions = null) {
                 branchStroke: '#4e79a7',
                 branchStrokeWidth: 2,
                 linkStroke: '#cccccc',
-                fontCentral: '18px Inter, sans-serif',
-                fontBranch: '16px Inter, sans-serif',
-                fontChild: '14px Inter, sans-serif',
+                        fontCentral: '18px Inter, Segoe UI, sans-serif',
+        fontBranch: '16px Inter, Segoe UI, sans-serif',
+        fontChild: '14px Inter, Segoe UI, sans-serif',
                 background: '#ffffff'
             };
         }
@@ -79,8 +79,8 @@ function renderMindMap(spec, theme = null, dimensions = null) {
             childNodeText: '#333333',
             childNodeStroke: '#cccccc',
             linkStroke: '#cccccc',
-            fontCentral: '18px Inter, sans-serif',
-            fontChild: '14px Inter, sans-serif',
+                    fontCentral: '18px Inter, Segoe UI, sans-serif',
+        fontChild: '14px Inter, Segoe UI, sans-serif',
             background: '#ffffff'
         };
     }
@@ -175,7 +175,7 @@ function renderMindMapWithLayout(spec, svg, centerX, centerY, THEME) {
     const connections = spec.connections || [];
     
     // Begin rendering
-    console.log(`Rendering mindmap: ${Object.keys(positions).length} nodes, ${connections.length} connections`);
+    // Rendering mindmap with calculated nodes and connections
     
     // Draw connections first
     if (connections.length > 0) {
@@ -403,7 +403,7 @@ function renderMindMapWithLayout(spec, svg, centerX, centerY, THEME) {
             }
         });
         
-    console.log('Mindmap rendered successfully');
+    // Mindmap rendered successfully
 }
 
 // Export functions for module system

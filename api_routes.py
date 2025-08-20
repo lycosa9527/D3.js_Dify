@@ -399,8 +399,18 @@ def generate_png():
         brace_agent = BraceMapAgent()
         agent_result = brace_agent.generate_diagram(spec)
         if agent_result['success']:
-            # Use agent result instead of spec for brace maps
-            spec = agent_result
+            # CRITICAL FIX: Keep original spec structure and enhance it with agent data
+            # This prevents breaking the JavaScript renderer which expects the original format
+            enhanced_spec = spec.copy() if isinstance(spec, dict) else spec
+            enhanced_spec['_agent_result'] = agent_result
+            enhanced_spec['_layout_data'] = agent_result.get('layout_data')
+            enhanced_spec['_svg_data'] = agent_result.get('svg_data')
+            enhanced_spec['_optimal_dimensions'] = {
+                'width': agent_result.get('svg_data', {}).get('width'),
+                'height': agent_result.get('svg_data', {}).get('height')
+            }
+            spec = enhanced_spec
+            logger.info(f"Enhanced brace map spec with agent data (original structure preserved)")
         else:
             logger.error(f"Brace map agent failed: {agent_result.get('error')}")
             return jsonify({'error': f"Brace map generation failed: {agent_result.get('error')}"}), 500
@@ -556,11 +566,26 @@ def generate_png():
                     'topicFontSize': dimensions.get('topicFontSize', 26),
                     'charFontSize': dimensions.get('charFontSize', 22)
                 }
-            elif graph_type == 'brace_map' and spec and spec.get('success') and 'svg_data' in spec:
-                # Use agent's optimal dimensions for brace maps
-                svg_data = spec['svg_data']
-                if 'width' in svg_data and 'height' in svg_data:
-                    # Use the agent's calculated optimal dimensions
+            elif graph_type == 'brace_map' and spec:
+                # Check for enhanced spec format first (new format)
+                optimal_dims = spec.get('_optimal_dimensions', {})
+                svg_data = spec.get('_svg_data', {})
+                
+                # Use enhanced format dimensions if available
+                if optimal_dims and optimal_dims.get('width') and optimal_dims.get('height'):
+                    dimensions = {
+                        'baseWidth': optimal_dims['width'],
+                        'baseHeight': optimal_dims['height'],
+                        'padding': 50,
+                        'width': optimal_dims['width'],
+                        'height': optimal_dims['height'],
+                        'topicFontSize': dimensions.get('topicFontSize', 20),
+                        'partFontSize': dimensions.get('partFontSize', 16),
+                        'subpartFontSize': dimensions.get('subpartFontSize', 14)
+                    }
+                    logger.info(f"Using enhanced spec optimal dimensions: {optimal_dims['width']}x{optimal_dims['height']}")
+                # Legacy format fallback
+                elif spec.get('success') and svg_data and 'width' in svg_data and 'height' in svg_data:
                     dimensions = {
                         'baseWidth': svg_data['width'],
                         'baseHeight': svg_data['height'],
@@ -571,7 +596,7 @@ def generate_png():
                         'partFontSize': dimensions.get('partFontSize', 16),
                         'subpartFontSize': dimensions.get('subpartFontSize', 14)
                     }
-                    logger.info(f"Using agent's optimal dimensions: {svg_data['width']}x{svg_data['height']}")
+                    logger.info(f"Using legacy format optimal dimensions: {svg_data['width']}x{svg_data['height']}")
                 else:
                     # Fallback to default dimensions if agent data is not available
                     dimensions = {
@@ -702,9 +727,49 @@ def generate_png():
                         }}
                         
                         // Use agent renderer for brace maps
-                        if (window.graph_type === "brace_map" && window.spec.success) {{
+                        if (window.graph_type === "brace_map") {{
                             console.log("Using brace map agent renderer");
-                            renderBraceMapAgent(window.spec, backendTheme, window.dimensions);
+                            console.log("Debug: window.spec:", window.spec);
+                            console.log("Debug: spec keys:", Object.keys(window.spec || {{}}));
+                            
+                            // Handle both enhanced format (with original structure) and legacy formats
+                            const hasValidSpec = window.spec && (
+                                (window.spec.topic && Array.isArray(window.spec.parts)) || // Enhanced format
+                                window.spec.success || // Legacy format
+                                window.spec.data || window.spec.svg_data || window.spec.layout_data
+                            );
+                            
+                            console.log("Debug: hasValidSpec:", hasValidSpec);
+                            console.log("Debug: renderBraceMap available:", typeof renderBraceMap);
+                            console.log("Debug: BraceRenderer available:", typeof window.BraceRenderer);
+                            
+                            if (hasValidSpec) {{
+                                if (typeof renderBraceMap === "function") {{
+                                    console.log("Calling global renderBraceMap function");
+                                    try {{
+                                        renderBraceMap(window.spec, backendTheme, window.dimensions);
+                                        console.log("renderBraceMap completed successfully");
+                                    }} catch (error) {{
+                                        console.error("Error in renderBraceMap:", error);
+                                        document.body.innerHTML += "<div style=\\"color: red; padding: 20px;\\">Render error: " + error.message + "</div>";
+                                    }}
+                                }} else if (typeof window.BraceRenderer !== "undefined" && typeof window.BraceRenderer.renderBraceMap === "function") {{
+                                    console.log("Calling BraceRenderer.renderBraceMap function");
+                                    try {{
+                                        window.BraceRenderer.renderBraceMap(window.spec, backendTheme, window.dimensions);
+                                        console.log("BraceRenderer.renderBraceMap completed successfully");
+                                    }} catch (error) {{
+                                        console.error("Error in BraceRenderer.renderBraceMap:", error);
+                                        document.body.innerHTML += "<div style=\\"color: red; padding: 20px;\\">Render error: " + error.message + "</div>";
+                                    }}
+                                }} else {{
+                                    console.error("renderBraceMap function not available");
+                                    document.body.innerHTML += "<div style=\\"color: red; padding: 20px;\\">Brace map renderer not loaded</div>";
+                                }}
+                            }} else {{
+                                console.error("Invalid brace map specification");
+                                document.body.innerHTML += "<div style=\\"color: red; padding: 20px;\\">Invalid brace map specification</div>";
+                            }}
                         }} else if (window.graph_type === "flow_map") {{
                             console.log("Using flow map renderer directly");
                             if (typeof renderFlowMap === "function") {{
@@ -925,122 +990,7 @@ def generate_png():
         return jsonify({'error': f'Failed to generate PNG: {e}'}), 500
 
 
-@api.route('/generate_graph_deepseek', methods=['POST'])
-@handle_api_errors
-def generate_graph_deepseek():
-    """Generate graph specification using DeepSeek for prompt enhancement and Qwen for JSON generation (optional)."""
-    # Input validation
-    data = request.json
-    valid, msg = validate_request_data(data, ['prompt'])
-    if not valid:
-        return jsonify({'error': msg}), 400
-    
-    prompt = sanitize_prompt(data['prompt'])
-    if not prompt:
-        return jsonify({'error': 'Invalid or empty prompt'}), 400
-    
-    language = data.get('language', 'en')  # Default to English for DeepSeek
-    if not isinstance(language, str) or language not in ['zh', 'en']:
-        return jsonify({'error': 'Invalid language. Must be "zh" or "en"'}), 400
-    
-    logger.info(f"Frontend /generate_graph_deepseek: prompt={prompt!r}, language={language!r}")
-    
-    try:
-        import deepseek_agent
-        # Use enhanced agent for combined extraction
-        enhanced_result = deepseek_agent.enhanced_development_workflow(prompt, language, save_to_file=False)
-        if isinstance(enhanced_result, dict) and enhanced_result.get('error'):
-            logger.error(f"DeepSeek enhanced workflow failed: {enhanced_result['error']}")
-            return jsonify({'error': enhanced_result['error']}), 400
-        
-        diagram_type = enhanced_result.get('diagram_type', 'bubble_map')
-        enhanced_prompt = enhanced_result.get('development_prompt', prompt)
-        topics = enhanced_result.get('topics', [])
-        style_preferences = enhanced_result.get('style_preferences', {})
-        
-        logger.info(f"DeepSeek: Classified as {diagram_type}, enhanced prompt generated")
-        
-        # Use Qwen to generate the actual JSON specification
-        spec = agent.generate_graph_spec(enhanced_prompt, diagram_type, language)
-        
-        if isinstance(spec, dict) and spec.get('error'):
-            logger.error(f"Qwen JSON generation failed: {spec['error']}")
-            return jsonify({'error': spec['error']}), 400
-        
-        logger.info(f"Qwen: Generated JSON specification for {diagram_type}")
-        
-        return jsonify({
-            'type': diagram_type,
-            'spec': spec,
-            'agent': 'deepseek+qwen',
-            'enhanced_prompt': enhanced_prompt,
-            'topics': topics,
-            'style_preferences': style_preferences,
-            'theme': config.get_d3_theme(),
-            'dimensions': config.get_d3_dimensions(),
-            'watermark': config.get_watermark_config()
-        })
-        
-    except ImportError:
-        logger.error("DeepSeek agent module not available")
-        return jsonify({'error': 'DeepSeek agent is not available. Please check configuration.'}), 500
-    except Exception as e:
-        logger.error(f"DeepSeek + Qwen workflow failed: {e}", exc_info=True)
-        return jsonify({'error': f'Workflow failed: {str(e)}'}), 500
-
-
-@api.route('/generate_development_prompt', methods=['POST'])
-@handle_api_errors
-def generate_development_prompt():
-    """Generate development phase prompt template using DeepSeek (for developers)."""
-    # Input validation
-    data = request.json
-    valid, msg = validate_request_data(data, ['prompt'])
-    if not valid:
-        return jsonify({'error': msg}), 400
-    
-    prompt = sanitize_prompt(data['prompt'])
-    if not prompt:
-        return jsonify({'error': 'Invalid or empty prompt'}), 400
-    
-    language = data.get('language', 'en')  # Default to English for DeepSeek
-    if not isinstance(language, str) or language not in ['zh', 'en']:
-        return jsonify({'error': 'Invalid language. Must be "zh" or "en"'}), 400
-    
-    save_to_file = data.get('save_to_file', True)  # Default to saving
-    
-    logger.info(f"Frontend /generate_development_prompt: prompt={prompt!r}, language={language!r}")
-    
-    try:
-        # Use DeepSeek for development phase prompt generation
-        import deepseek_agent
-        
-        # Generate development prompt template
-        result = deepseek_agent.development_workflow(prompt, language, save_to_file)
-        
-        # Check if DeepSeek processing was successful
-        if isinstance(result, dict) and result.get('error'):
-            logger.error(f"DeepSeek development prompt generation failed: {result['error']}")
-            return jsonify({'error': result['error']}), 400
-        
-        logger.info(f"DeepSeek: Generated development prompt for {result.get('diagram_type', 'unknown')}")
-        
-        return jsonify({
-            'diagram_type': result.get('diagram_type'),
-            'development_prompt': result.get('development_prompt'),
-            'original_prompt': result.get('original_prompt'),
-            'language': result.get('language'),
-            'workflow_type': result.get('workflow_type'),
-            'saved_filename': result.get('saved_filename'),
-            'agent': 'deepseek_development'
-        })
-        
-    except ImportError:
-        logger.error("DeepSeek agent module not available")
-        return jsonify({'error': 'DeepSeek agent is not available. Please check configuration.'}), 500
-    except Exception as e:
-        logger.error(f"DeepSeek development workflow failed: {e}", exc_info=True)
-        return jsonify({'error': f'Development workflow failed: {str(e)}'}), 500 
+ 
 
 @api.route('/update_style', methods=['POST'])
 @handle_api_errors

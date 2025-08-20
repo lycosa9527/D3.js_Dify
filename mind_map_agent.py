@@ -102,13 +102,13 @@ class MindMapAgent:
         
         # STEP 1: Analyze how many branches we get from LLM
         num_branches = len(children)
-        print(f"🔍 LLM returned {num_branches} branches")
+        # LLM returned branches
         
         # STEP 2: Calculate left/right branch distribution
         left_branch_count = (num_branches + 1) // 2  # More branches on left if odd
         right_branch_count = num_branches - left_branch_count
         
-        print(f"📐 Branch distribution: LEFT={left_branch_count}, RIGHT={right_branch_count}")
+        # Branch distribution calculated
         
         # STEP 3: Calculate column positions with proper spacing
         gap_topic_to_branch = 200  # Space between topic and branches
@@ -136,8 +136,7 @@ class MindMapAgent:
         right_branches_x = gap_topic_to_branch + max_branch_width/2
         right_children_x = gap_topic_to_branch + max_branch_width + gap_branch_to_child + max_child_width/2
         
-        print(f"📐 Column positions: Left Children={left_children_x:.1f}, Left Branches={left_branches_x:.1f}, Right Branches={right_branches_x:.1f}, Right Children={right_children_x:.1f}")
-        print(f"📐 Max dimensions: Branch={max_branch_width:.1f}, Child={max_child_width:.1f}")
+        # Column positions and max dimensions calculated
         
         # STEP 4: Stack ALL children vertically on each side first (before positioning topic)
         all_children_positions = {}  # Store child positions by branch index
@@ -171,7 +170,7 @@ class MindMapAgent:
                     current_y = right_children_y
                     side_children = right_branch_children
                 
-                print(f"📍 Branch {i+1} ({branch_data['label']}) goes {'LEFT' if is_left_side else 'RIGHT'} side, children at x={child_x:.1f}")
+                # Branch side determined
                 
                 # Stack children vertically with proper spacing
                 child_positions = []
@@ -247,11 +246,11 @@ class MindMapAgent:
                 # Position branch at the center of its children group
                 children_center_y = sum(child['y'] for child in branch_children) / len(branch_children)
                 branch_y = children_center_y
-                print(f"📍 Branch {i+1} ({branch_text}) positioned at x={branch_x:.1f}, y={branch_y:.1f} (centered on children, {'LEFT' if is_left_side else 'RIGHT'} side)")
+                # Branch positioned (centered on children)
             else:
                 # No children, use clockwise positioning
                 branch_y = self._calculate_clockwise_branch_y(i, num_branches, is_left_side)
-                print(f"📍 Branch {i+1} ({branch_text}) positioned at x={branch_x:.1f}, y={branch_y:.1f} (clockwise, {'LEFT' if is_left_side else 'RIGHT'} side)")
+                # Branch positioned (clockwise)
             
             # Store branch position
             positions[f'branch_{i}'] = {
@@ -283,20 +282,20 @@ class MindMapAgent:
                 branch_2_key = f'branch_1'
                 if branch_2_key in positions:
                     positions[branch_2_key]['y'] = topic_y
-                    print(f"🎯 Branch 2 aligned with central topic at y={topic_y:.1f}")
+                    # Branch 2 aligned with central topic
             
             if num_branches >= 5:
                 # Align Branch 5 (index 4) with central topic
                 branch_5_key = f'branch_4'
                 if branch_5_key in positions:
                     positions[branch_5_key]['y'] = topic_y
-                    print(f"🎯 Branch 5 aligned with central topic at y={topic_y:.1f}")
+                    # Branch 5 aligned with central topic
             
-            print(f"🎯 Central topic positioned at vertical center of branches: y={topic_y:.1f} (range: {min_branch_y:.1f} to {max_branch_y:.1f})")
+            # Central topic positioned at vertical center of branches
         else:
             # Fallback if no branches
             topic_y = 0
-            print(f"🎯 Central topic positioned at default center: y={topic_y:.1f}")
+            # Central topic positioned at default center
         
         # Position central topic
         topic_text = topic
@@ -331,12 +330,12 @@ class MindMapAgent:
                 positions[key]['x'] -= content_center_x
                 positions[key]['y'] -= content_center_y
             
-            print(f"🎯 All coordinates centered around (0,0) - adjusted by x={-content_center_x:.1f}, y={-content_center_y:.1f}")
+            # All coordinates centered around (0,0)
         
         # STEP 9: Compute recommended dimensions AFTER all positioning and centering is complete
         recommended_dimensions = self._compute_recommended_dimensions(positions, topic, children)
         
-        print(f"🎯 Final layout: {len(positions)} nodes positioned, {len(connections)} connections created")
+        # Final layout completed
         
         return {
             'algorithm': 'clean_vertical_stack',
@@ -439,9 +438,7 @@ class MindMapAgent:
         total_width = max(total_width, 1000)  # Increased minimum width
         total_height = max(total_height, 800)  # Increased minimum height
         
-        print(f"📏 Canvas calculation: content={content_width:.1f}x{content_height:.1f}, padding_x={padding_x}, padding_y={padding_y}, final={total_width:.1f}x{total_height:.1f}")
-        print(f"📏 Y-range: min_y={min_y:.1f}, max_y={max_y:.1f}, max_height={max_height:.1f}")
-        print(f"📏 Content bounds: X={min_x:.1f} to {max_x:.1f}, Y={min_y:.1f} to {max_y:.1f}")
+        # Canvas calculation completed
         
         return {
             "baseWidth": total_width,

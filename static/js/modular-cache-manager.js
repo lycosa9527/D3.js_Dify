@@ -106,7 +106,7 @@ class ModularCacheManager extends LazyJavaScriptCache {
         
         try {
             const requiredModules = this.getRequiredModules(graphType);
-            console.log(`📦 Loading modules for ${graphType}:`, requiredModules);
+            // Loading modules for graph type
             
             // Load all required modules
             const moduleContents = {};
@@ -141,8 +141,7 @@ class ModularCacheManager extends LazyJavaScriptCache {
             const bytesSaved = fullRendererSize - loadedSize;
             this.modularStats.bytesSaved += bytesSaved;
             
-            console.log(`✅ Modular loading completed in ${loadTime.toFixed(2)}ms`);
-            console.log(`💾 Bytes saved: ${bytesSaved.toLocaleString()} (${((bytesSaved / fullRendererSize) * 100).toFixed(1)}%)`);
+            // Modular loading completed
             
             return moduleContents;
             
@@ -181,7 +180,7 @@ class ModularCacheManager extends LazyJavaScriptCache {
         
         try {
             await Promise.all(preloadPromises);
-            console.log('✅ Common renderer modules preloaded successfully');
+            // Common renderer modules preloaded successfully
         } catch (error) {
             console.warn('⚠️ Some common modules failed to preload:', error);
         }
@@ -254,7 +253,7 @@ class ModularCacheManager extends LazyJavaScriptCache {
             averageLoadTime: 0,
             mostUsedRenderers: new Map()
         };
-        console.log('🧹 Modular statistics cleared');
+        // Modular statistics cleared
     }
     
     /**
@@ -276,14 +275,14 @@ class ModularCacheManager extends LazyJavaScriptCache {
                 this._stats.total_memory_usage -= moduleSize;
                 freedBytes += moduleSize;
                 removedCount++;
-                console.log(`🗑️ Removed unused renderer module: ${moduleName} (${moduleSize} bytes)`);
+                // Removed unused renderer module
             }
         }
         
         if (removedCount > 0) {
-            console.log(`✅ Cache optimization completed: ${removedCount} modules removed, ${freedBytes} bytes freed`);
+            // Cache optimization completed
         } else {
-            console.log('ℹ️ No unused modules to remove');
+            // No unused modules to remove
         }
         
         return { removedCount, freedBytes };

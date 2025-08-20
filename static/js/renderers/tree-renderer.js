@@ -8,14 +8,10 @@
  */
 
 // CRITICAL FIX: Add execution tracking
-console.log('🌳 Tree renderer: Script execution started');
-console.log('🌳 Tree renderer: Script location:', window.location.href);
-console.log('🌳 Tree renderer: Current time:', new Date().toISOString());
+// Tree renderer script execution started
 
 // Check if shared utilities are available
-console.log('🌳 Tree renderer: Checking dependencies...');
-console.log('🌳 Tree renderer: window.MindGraphUtils available:', typeof window.MindGraphUtils);
-console.log('🌳 Tree renderer: window.addWatermark available:', typeof window.addWatermark);
+// Checking dependencies
 
 if (typeof window.MindGraphUtils === 'undefined') {
     console.error('🌳 Tree renderer: MindGraphUtils not found! Please load shared-utilities.js first.');
@@ -147,7 +143,7 @@ function renderTreeMap(spec, theme = null, dimensions = null) {
                 .attr('x', -10000)
                 .attr('y', -10000)
                 .attr('font-size', fontPx)
-                .attr('font-family', 'Inter, sans-serif')
+                .attr('font-family', 'Inter, Segoe UI, sans-serif')
                 .attr('visibility', 'hidden')
                 .text(text || '');
             const node = temp.node();
@@ -412,14 +408,13 @@ function renderTreeMap(spec, theme = null, dimensions = null) {
 
 
 // CRITICAL FIX: Export functions to global scope for dispatcher access
-console.log('🌳 Tree renderer: Starting function export...');
-console.log('🌳 Tree renderer: renderTreeMap function exists:', typeof renderTreeMap);
+    // Starting function export
 
 // CRITICAL FIX: Use try-catch to ensure export doesn't fail silently
 try {
     if (typeof window !== 'undefined') {
         // Browser environment - attach to window
-        console.log('🌳 Tree renderer: Attaching to window object...');
+        // Attaching to window object
         
         // Force the assignment - check if properties already exist
         if (!window.hasOwnProperty('renderTreeMap')) {
@@ -428,9 +423,9 @@ try {
                 writable: true,
                 configurable: true
             });
-            console.log('✅ renderTreeMap property defined');
+            // renderTreeMap property defined
         } else {
-            console.log('ℹ️ renderTreeMap property already exists, updating value');
+            // renderTreeMap property defined
             window.renderTreeMap = renderTreeMap;
         }
         
@@ -442,27 +437,27 @@ try {
                 writable: true,
                 configurable: true
             });
-            console.log('✅ TreeRenderer property defined');
+            // TreeRenderer property defined
         } else {
-            console.log('ℹ️ TreeRenderer property already exists, updating value');
+            // TreeRenderer property defined
             window.TreeRenderer = { renderTreeMap: renderTreeMap };
         }
         
-        console.log('✅ Tree renderer functions exported to global scope');
-        console.log('🌳 Tree renderer: window.renderTreeMap now available:', typeof window.renderTreeMap);
-        console.log('🌳 Tree renderer: window.TreeRenderer now available:', typeof window.TreeRenderer);
+        // Tree renderer functions exported to global scope
+        // renderTreeMap property defined
+        // TreeRenderer property defined
         
         // Verify the export worked
         if (typeof window.renderTreeMap === 'function') {
-            console.log('✅ SUCCESS: renderTreeMap is now available globally');
+            // renderTreeMap property defined
         } else {
-            console.error('❌ FAILED: renderTreeMap is not available globally');
+            console.error('�?FAILED: renderTreeMap is not available globally');
         }
         
         if (typeof window.TreeRenderer === 'object' && window.TreeRenderer.renderTreeMap) {
-            console.log('✅ SUCCESS: TreeRenderer.renderTreeMap is now available globally');
+            // renderTreeMap property defined
         } else {
-            console.error('❌ FAILED: TreeRenderer.renderTreeMap is not available globally');
+            console.error('�?FAILED: TreeRenderer.renderTreeMap is not available globally');
         }
         
     } else if (typeof module !== 'undefined' && module.exports) {
@@ -475,23 +470,23 @@ try {
         };
     }
 } catch (error) {
-    console.error('❌ CRITICAL ERROR during function export:', error);
+    console.error('�?CRITICAL ERROR during function export:', error);
     // Try alternative export method
     try {
-        console.log('🔄 Attempting alternative export method...');
+        // Alternative export completed
         if (typeof window !== 'undefined') {
             window.renderTreeMap = renderTreeMap;
             window.TreeRenderer = { renderTreeMap: renderTreeMap };
-            console.log('✅ Alternative export completed');
+            // Alternative export completed
         }
     } catch (altError) {
-        console.error('❌ Alternative export also failed:', altError);
+        console.error('�?Alternative export also failed:', altError);
     }
 }
 
 // CRITICAL FIX: Final execution confirmation
-console.log('🌳 Tree renderer: Script execution completed');
-console.log('🌳 Tree renderer: Final status check:');
-console.log('  - renderTreeMap function defined:', typeof renderTreeMap);
-console.log('  - window.renderTreeMap available:', typeof window.renderTreeMap);
-console.log('  - window.TreeRenderer available:', typeof window.TreeRenderer);
+// Script execution completed
+// Final status check completed
+// renderTreeMap property defined
+// renderTreeMap property defined
+// TreeRenderer property defined

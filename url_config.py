@@ -15,8 +15,6 @@ Version: 2.4.0
 # Core Graph Generation
 API_GENERATE_GRAPH = '/api/generate_graph'
 API_GENERATE_PNG = '/api/generate_png'
-API_GENERATE_GRAPH_DEEPSEEK = '/api/generate_graph_deepseek'
-API_GENERATE_DEVELOPMENT_PROMPT = '/api/generate_development_prompt'
 API_UPDATE_STYLE = '/api/update_style'
 
 # ============================================================================
@@ -49,7 +47,7 @@ STATIC_STYLE_MANAGER = '/static/js/style-manager.js'
 
 # CSS and External Resources
 EXTERNAL_D3_CDN = '/static/js/d3.min.js'  # Now points to local D3.js
-EXTERNAL_GOOGLE_FONTS = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap'
+EXTERNAL_GOOGLE_FONTS = '/static/fonts/inter.css'  # Now points to local Inter font CSS
 
 # ============================================================================
 # UTILITY FUNCTIONS
@@ -60,8 +58,6 @@ def get_api_urls():
     return {
         'generate_graph': API_GENERATE_GRAPH,
         'generate_png': API_GENERATE_PNG,
-        'generate_graph_deepseek': API_GENERATE_GRAPH_DEEPSEEK,
-        'generate_development_prompt': API_GENERATE_DEVELOPMENT_PROMPT,
         'update_style': API_UPDATE_STYLE
     }
 

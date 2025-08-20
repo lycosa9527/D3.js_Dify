@@ -423,15 +423,13 @@ function renderDoubleBubbleMap(spec, theme = null, dimensions = null) {
         return;
     }
     
-    console.log('renderDoubleBubbleMap: validation passed, proceeding with rendering');
-    console.log('renderDoubleBubbleMap received theme:', theme);
-    console.log('Theme background property:', theme?.background);
+    // Validation passed, proceeding with rendering
     
     const baseWidth = dimensions?.baseWidth || 800;
     
     // Apply background if specified (like bubble map)
     if (theme && theme.background) {
-        console.log('Setting container background to theme.background:', theme.background);
+        // Setting container background to theme background
         d3.select('#d3-container').style('background-color', theme.background);
     }
     const baseHeight = dimensions?.baseHeight || 600;
@@ -507,7 +505,7 @@ function renderDoubleBubbleMap(spec, theme = null, dimensions = null) {
     
     // Apply container background if specified (like bubble map)
     if (theme && theme.background) {
-        console.log('Setting container background to:', theme.background, 'dimensions:', width, 'x', height);
+        // Setting container background and dimensions
         d3.select('#d3-container').style('background-color', theme.background);
     }
     

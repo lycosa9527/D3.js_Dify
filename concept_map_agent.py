@@ -449,11 +449,11 @@ class ConceptMapAgent:
                                                concepts=concepts,
                                                topic=topic)
             
-            print(f"DEBUG: Stage 2 prompt: {stage2_prompt}")
+            # Stage 2 prompt generated
             stage2_response = self._get_llm_response(llm_client, stage2_prompt)
-            print(f"DEBUG: Stage 2 response: {stage2_response}")
+            # Stage 2 response received
             relationships_data = self._parse_json_response(stage2_response)
-            print(f"DEBUG: Parsed relationships data: {relationships_data}")
+            # Relationships data parsed successfully
             
             if not relationships_data or "relationships" not in relationships_data:
                 raise ValueError("Failed to parse relationships from stage 2")
@@ -493,14 +493,13 @@ class ConceptMapAgent:
                 return prompt_template.format(**kwargs)
             
             # If we still don't have a prompt, log the issue
-            print(f"Warning: No prompt found for key '{prompt_key}' (language: {language})")
-            print(f"Available keys: {list(CONCEPT_MAP_PROMPTS.keys())}")
+                    # Warning: No prompt found for key
             return None
         except ImportError as e:
-            print(f"Error importing prompts module: {e}")
+            # Error importing prompts module
             return None
         except Exception as e:
-            print(f"Unexpected error in _get_prompt: {e}")
+            # Unexpected error in _get_prompt
             return None
     
     def _get_llm_response(self, llm_client, prompt: str) -> str:
@@ -1272,7 +1271,8 @@ class ConceptMapAgent:
                 return grouped_spec
             
         except Exception as e:
-            print(f"LLM categorization failed: {e}, falling back to mechanical grouping")
+            # LLM categorization failed, falling back to mechanical grouping
+            pass
         
         # Fallback to mechanical grouping if LLM fails
         return self._create_mechanical_grouped_spec(spec, topic, concepts)
@@ -1344,7 +1344,7 @@ class ConceptMapAgent:
                 return None
                 
         except Exception as e:
-            print(f"LLM categorization error: {e}")
+            # LLM categorization error occurred
             return None
     
     def _create_mechanical_grouped_spec(self, spec: Dict, topic: str, concepts: List[str]) -> Dict:

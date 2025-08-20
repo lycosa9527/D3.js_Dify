@@ -72,21 +72,24 @@ function addWatermark(svg, theme = null) {
     const watermarkText = getWatermarkText(theme);
     const watermarkConfig = theme?.watermark || {};
     
-    // Default watermark configuration
+    // Default watermark configuration - EXACTLY as in original d3-renderers.js
     const config = {
         text: watermarkText,
         fontSize: watermarkConfig.fontSize || '12px',
-        fill: watermarkConfig.fill || '#cccccc',
-        opacity: watermarkConfig.opacity || 0.5,
+        fill: watermarkConfig.fill || '#2c3e50', // Changed to match original: dark blue-grey
+        opacity: watermarkConfig.opacity || 0.8, // Changed to match original: 80% opacity
         position: watermarkConfig.position || 'bottom-right',
         padding: watermarkConfig.padding || 10
     };
     
-    // Get SVG dimensions
+    // Get SVG dimensions from the SVG element itself, not from content bbox
     const svgNode = svg.node();
-    const bbox = svgNode.getBBox();
-    const svgWidth = bbox.width || 800;
-    const svgHeight = bbox.height || 600;
+    const svgWidth = svgNode.getAttribute('width') || svgNode.getAttribute('viewBox')?.split(' ')[2] || 800;
+    const svgHeight = svgNode.getAttribute('height') || svgNode.getAttribute('viewBox')?.split(' ')[3] || 600;
+    
+    // Parse dimensions if they're strings
+    const width = parseFloat(svgWidth);
+    const height = parseFloat(svgHeight);
     
     // Calculate position based on configuration
     let x, y, textAnchor;
@@ -98,33 +101,35 @@ function addWatermark(svg, theme = null) {
             textAnchor = 'start';
             break;
         case 'top-right':
-            x = svgWidth - config.padding;
+            x = width - config.padding;
             y = config.padding + 12;
             textAnchor = 'end';
             break;
         case 'bottom-left':
             x = config.padding;
-            y = svgHeight - config.padding;
+            y = height - config.padding;
             textAnchor = 'start';
             break;
         case 'bottom-right':
         default:
-            x = svgWidth - config.padding;
-            y = svgHeight - config.padding;
+            x = width - config.padding;
+            y = height - config.padding;
             textAnchor = 'end';
             break;
     }
     
-    // Add watermark text
+    // Add watermark text - EXACTLY as in original d3-renderers.js
     svg.append('text')
         .attr('x', x)
         .attr('y', y)
         .attr('text-anchor', textAnchor)
+        .attr('dominant-baseline', 'alphabetic') // Added to match original
         .attr('font-size', config.fontSize)
-        .attr('font-family', 'Arial, sans-serif')
+        .attr('font-family', 'Inter, Segoe UI, sans-serif') // Changed back to Inter
+        .attr('font-weight', '500') // Changed to match original
         .attr('fill', config.fill)
         .attr('opacity', config.opacity)
-        .style('pointer-events', 'none')
+        .attr('pointer-events', 'none') // Changed from style to attr to match original
         .text(config.text);
 }
 
@@ -244,7 +249,7 @@ if (typeof window !== 'undefined') {
         window.getTextRadius = getTextRadius;
     }
     
-    console.log('✅ Shared utilities exported to global scope');
+    // Shared utilities exported to global scope
 } else if (typeof module !== 'undefined' && module.exports) {
     // Node.js environment
     module.exports = {

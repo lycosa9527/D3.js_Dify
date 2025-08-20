@@ -3,14 +3,14 @@ MindGraph - AI-Powered Graph Generation Application
 ===================================================
 
 A Flask-based web application that generates interactive D3.js graphs using AI agents.
-Supports both Qwen and DeepSeek LLMs for intelligent graph generation and enhancement.
+Supports Qwen LLM for intelligent graph generation and enhancement.
 
 Version: 2.4.0
 Author: MindSpring Team
 License: MIT
 
 Features:
-- AI-powered graph generation with Qwen and DeepSeek LLMs
+- AI-powered graph generation with Qwen LLM
 - Interactive D3.js visualization
 - PNG export functionality
 - Comprehensive dependency validation
@@ -22,14 +22,12 @@ Dependencies:
 - Flask, LangChain, Playwright, Pillow
 - Node.js (for D3.js dependencies)
 - Qwen API key (required)
-- DeepSeek API key (optional)
 
 Usage:
     python app.py
 
 Environment Variables:
     QWEN_API_KEY: Required for core functionality
-    DEEPSEEK_API_KEY: Optional for enhanced features
     See env.example for complete configuration
 """
 
@@ -139,9 +137,7 @@ def validate_dependencies():
         logger.error("Please check QWEN_API_KEY and QWEN_API_URL in your environment")
         sys.exit(1)
     
-    # Check DeepSeek configuration (optional, for enhanced features)
-    if not config.validate_deepseek_config():
-        logger.warning("DeepSeek configuration not available - features will be disabled")
+
     
     # Validate numeric configuration values
     if not config.validate_numeric_config():

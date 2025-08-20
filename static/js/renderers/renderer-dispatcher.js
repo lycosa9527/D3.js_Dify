@@ -9,7 +9,7 @@
 
 // Main rendering dispatcher function
 function renderGraph(type, spec, theme = null, dimensions = null) {
-    console.log('renderGraph called with:', { type, spec, theme, dimensions });
+    // renderGraph called with parameters
     
     // Clear the container first
     d3.select('#d3-container').html('');
@@ -17,22 +17,22 @@ function renderGraph(type, spec, theme = null, dimensions = null) {
     // Extract style information from spec if available
     let integratedTheme = theme;
     if (spec && spec._style) {
-        console.log('Using integrated styles from spec:', spec._style);
+        // Using integrated styles from spec
         // Merge spec styles with backend theme (backend background takes priority)
         integratedTheme = {
             ...spec._style,
             background: theme?.background
         };
-        console.log('Merged theme background (backend priority):', integratedTheme.background);
+        // Merged theme background (backend priority)
     } else {
         // Use theme as-is (no fallbacks)
         integratedTheme = theme;
-        console.log('Using backend theme background:', integratedTheme?.background);
+        // Using backend theme background
     }
     
     // Extract style metadata for debugging
     if (spec && spec._style_metadata) {
-        console.log('Style metadata:', spec._style_metadata);
+        // Style metadata available
     }
     
     switch (type) {
@@ -61,29 +61,26 @@ function renderGraph(type, spec, theme = null, dimensions = null) {
             }
             break;
         case 'tree_map':
-            console.log('Renderer dispatcher: Processing tree_map case');
-            console.log('Renderer dispatcher: renderTreeMap function available:', typeof renderTreeMap);
-            console.log('Renderer dispatcher: window.renderTreeMap available:', typeof window.renderTreeMap);
-            console.log('Renderer dispatcher: window.TreeRenderer available:', typeof window.TreeRenderer);
+                    // Processing tree_map case
             if (window.TreeRenderer) {
-                console.log('Renderer dispatcher: window.TreeRenderer.renderTreeMap available:', typeof window.TreeRenderer.renderTreeMap);
+                // window.TreeRenderer.renderTreeMap available
             }
             
             // CRITICAL FIX: Check all possible locations for the function
             let treeMapRenderer = null;
             if (typeof renderTreeMap === 'function') {
                 treeMapRenderer = renderTreeMap;
-                console.log('Renderer dispatcher: Using global renderTreeMap');
+                // Using global renderTreeMap
             } else if (typeof window.renderTreeMap === 'function') {
                 treeMapRenderer = window.renderTreeMap;
-                console.log('Renderer dispatcher: Using window.renderTreeMap');
+                // Using window.renderTreeMap
             } else if (window.TreeRenderer && typeof window.TreeRenderer.renderTreeMap === 'function') {
                 treeMapRenderer = window.TreeRenderer.renderTreeMap;
-                console.log('Renderer dispatcher: Using window.TreeRenderer.renderTreeMap');
+                // Using window.TreeRenderer.renderTreeMap
             }
             
             if (treeMapRenderer) {
-                console.log('Renderer dispatcher: Calling tree map renderer');
+                // Calling tree map renderer
                 treeMapRenderer(spec, integratedTheme, dimensions);
             } else {
                 console.error('renderTreeMap function not found anywhere');
@@ -124,17 +121,29 @@ function renderGraph(type, spec, theme = null, dimensions = null) {
             }
             break;
         case 'brace_map':
+                    // Processing brace_map case
+            
+            // CRITICAL FIX: Check all possible locations for the function
+            let braceMapRenderer = null;
             if (typeof renderBraceMap === 'function') {
-                console.log('Rendering brace map with spec:', spec);
+                braceMapRenderer = renderBraceMap;
+                // Using global renderBraceMap
+            } else if (window.BraceRenderer && typeof window.BraceRenderer.renderBraceMap === 'function') {
+                braceMapRenderer = window.BraceRenderer.renderBraceMap;
+                // Using window.BraceRenderer.renderBraceMap
+            }
+            
+            if (braceMapRenderer) {
+                // Calling brace map renderer
                 try {
-                    renderBraceMap(spec, integratedTheme, dimensions);
-                    console.log('Brace map rendering completed');
+                    braceMapRenderer(spec, integratedTheme, dimensions);
+                    // Brace map rendering completed
                 } catch (error) {
                     console.error('Error rendering brace map:', error);
                     showRendererError('brace_map', error.message);
                 }
             } else {
-                console.error('renderBraceMap function not found');
+                console.error('renderBraceMap function not found anywhere');
                 showRendererError('brace_map');
             }
             break;

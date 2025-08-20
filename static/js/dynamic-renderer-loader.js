@@ -66,7 +66,7 @@ class DynamicRendererLoader {
         const promise = this.loadScript('/static/js/renderers/shared-utilities.js')
             .then(() => {
                 this.loadedModules.add('shared-utilities');
-                console.log('✅ Shared utilities loaded successfully');
+                // Shared utilities loaded successfully
             })
             .catch(error => {
                 console.error('❌ Failed to load shared utilities:', error);
@@ -94,23 +94,23 @@ class DynamicRendererLoader {
         
         // Check if module is already loaded
         if (this.loadedModules.has(moduleName)) {
-            console.log(`📦 Renderer module '${moduleName}' already loaded for ${graphType}`);
+            // Renderer module already loaded
             return this.rendererRegistry.get(moduleName);
         }
         
         // Check if module is currently loading
         if (this.loadingPromises.has(moduleName)) {
-            console.log(`⏳ Waiting for renderer module '${moduleName}' to load...`);
+            // Waiting for renderer module to load
             return this.loadingPromises.get(moduleName);
         }
         
         // Load the module
-        console.log(`🚀 Loading renderer module '${moduleName}' for ${graphType}...`);
+                    // Loading renderer module
         const loadPromise = this.loadRendererModule(moduleName)
             .then((renderer) => {
                 this.loadedModules.add(moduleName);
                 this.rendererRegistry.set(moduleName, renderer);
-                console.log(`✅ Renderer module '${moduleName}' loaded successfully`);
+                // Renderer module loaded successfully
                 return renderer;
             })
             .catch(error => {
@@ -210,7 +210,7 @@ class DynamicRendererLoader {
             script.async = true;
             
             script.onload = () => {
-                console.log(`✅ Script loaded: ${src}`);
+                // Script loaded successfully
                 resolve();
             };
             
@@ -253,14 +253,14 @@ class DynamicRendererLoader {
      */
     async renderGraph(graphType, spec, theme = null, dimensions = null) {
         try {
-            console.log(`🎯 Dynamic rendering: ${graphType}`);
+            // Dynamic rendering started
             const startTime = performance.now();
             
             const renderFunction = await this.getRenderFunction(graphType);
             const result = renderFunction(spec, theme, dimensions);
             
             const endTime = performance.now();
-            console.log(`✅ Dynamic rendering completed in ${(endTime - startTime).toFixed(2)}ms`);
+            // Dynamic rendering completed
             
             return result;
         } catch (error) {
@@ -307,7 +307,7 @@ class DynamicRendererLoader {
         
         try {
             await Promise.all(preloadPromises);
-            console.log('✅ Common renderers preloaded successfully');
+            // Common renderers preloaded successfully
         } catch (error) {
             console.warn('⚠️ Some common renderers failed to preload:', error);
         }

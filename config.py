@@ -13,12 +13,11 @@ Features:
 - Property-based configuration access for real-time updates
 - Comprehensive validation for required and optional settings
 - Default values for all configuration options
-- Support for both Qwen and DeepSeek LLM configurations
+- Support for Qwen LLM configuration
 - D3.js visualization customization options
 
 Environment Variables:
 - QWEN_API_KEY: Required for core functionality
-- DEEPSEEK_API_KEY: Optional for enhanced features
 - See env.example for complete configuration options
 
 Usage:
@@ -99,52 +98,12 @@ class Config:
         except (ValueError, TypeError):
             logger.warning("Invalid QWEN_TIMEOUT value, using 40")
             return 40
-    @property
-    def DEEPSEEK_API_KEY(self):
-        return self._get_cached_value('DEEPSEEK_API_KEY')
-    @property
-    def DEEPSEEK_API_URL(self):
-        return self._get_cached_value('DEEPSEEK_API_URL', 'https://api.deepseek.com/v1/chat/completions')
-    @property
-    def DEEPSEEK_MODEL(self):
-        """DeepSeek model name for API requests."""
-        return self._get_cached_value('DEEPSEEK_MODEL', 'deepseek-r1')
-    @property
-    def DEEPSEEK_TEMPERATURE(self):
-        """DeepSeek model temperature for response creativity (0.0-1.0)."""
-        try:
-            temp = float(self._get_cached_value('DEEPSEEK_TEMPERATURE', '0.7'))
-            if not 0.0 <= temp <= 1.0:
-                logger.warning(f"DeepSeek Temperature {temp} out of range [0.0, 1.0], using 0.7")
-                return 0.7
-            return temp
-        except (ValueError, TypeError):
-            logger.warning("Invalid DeepSeek Temperature value, using 0.7")
-            return 0.7
-    @property
-    def DEEPSEEK_MAX_TOKENS(self):
-        """Maximum tokens for DeepSeek API responses."""
-        try:
-            val = int(self._get_cached_value('DEEPSEEK_MAX_TOKENS', '2000'))
-            if val < 100 or val > 4096:
-                logger.warning(f"DeepSeek MAX_TOKENS {val} out of range, using 2000")
-                return 2000
-            return val
-        except (ValueError, TypeError):
-            logger.warning("Invalid DeepSeek MAX_TOKENS value, using 2000")
-            return 2000
-    @property
-    def DEEPSEEK_TIMEOUT(self):
-        """Timeout for DeepSeek API requests in seconds."""
-        try:
-            val = int(self._get_cached_value('DEEPSEEK_TIMEOUT', '60'))
-            if val < 5 or val > 120:
-                logger.warning(f"DeepSeek TIMEOUT {val} out of range, using 60")
-                return 60
-            return val
-        except (ValueError, TypeError):
-            logger.warning("Invalid DeepSeek TIMEOUT value, using 60")
-            return 60
+
+
+
+
+
+
     @property
     def HOST(self):
         """Flask application host address."""
@@ -348,41 +307,7 @@ class Config:
         
         return True
     
-    def validate_deepseek_config(self) -> bool:
-        """
-        Validate DeepSeek API configuration.
-        
-        Returns:
-            bool: True if DeepSeek configuration is valid, False otherwise
-        """
-        if not self.DEEPSEEK_API_KEY:
-            return False
-        
-        # Validate API URL format
-        if not self.DEEPSEEK_API_URL.startswith(('http://', 'https://')):
-            return False
-        
-        # Validate numeric values
-        try:
-            if not (0 <= self.DEEPSEEK_TEMPERATURE <= 1):
-                return False
-            if self.DEEPSEEK_MAX_TOKENS <= 0:
-                return False
-            if self.DEEPSEEK_TIMEOUT <= 0:
-                return False
-        except (ValueError, TypeError):
-            return False
-        
-        return True
-    
-    def check_deepseek_availability(self) -> bool:
-        """
-        Check if DeepSeek API is available and configured.
-        
-        Returns:
-            bool: True if DeepSeek is available, False otherwise
-        """
-        return bool(self.DEEPSEEK_API_KEY and self.validate_deepseek_config())
+
     
     def validate_numeric_config(self) -> bool:
         """
@@ -406,8 +331,7 @@ class Config:
                 return False
             
             # Validate timeouts and token limits
-            if (self.QWEN_TIMEOUT <= 0 or self.QWEN_MAX_TOKENS <= 0 or
-                self.DEEPSEEK_TIMEOUT <= 0 or self.DEEPSEEK_MAX_TOKENS <= 0):
+            if (self.QWEN_TIMEOUT <= 0 or self.QWEN_MAX_TOKENS <= 0):
                 return False
             
             return True
@@ -432,10 +356,7 @@ class Config:
         logger.info(f"   Flask: {self.HOST}:{self.PORT} (Debug: {self.DEBUG})")
         logger.info(f"   Qwen: {self.QWEN_MODEL} at {self.QWEN_API_URL}")
         
-        if self.check_deepseek_availability():
-            logger.info(f"   DeepSeek: {self.DEEPSEEK_MODEL} at {self.DEEPSEEK_API_URL}")
-        else:
-            logger.info("   DeepSeek: deepseek-chat (❌ Not Available)")
+
         
         logger.info(f"   Language: {self.GRAPH_LANGUAGE}")
         logger.info(f"   Theme: {self.D3_TOPIC_FILL} / {self.D3_SIM_FILL} / {self.D3_DIFF_FILL}")
@@ -474,34 +395,7 @@ class Config:
             'max_tokens': self.QWEN_MAX_TOKENS
         }
     
-    def get_deepseek_headers(self) -> dict:
-        """
-        Get headers for DeepSeek API requests.
-        
-        Returns:
-            dict: Headers dictionary for DeepSeek API requests
-        """
-        return {
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.DEEPSEEK_API_KEY}'
-        }
-    
-    def get_deepseek_data(self, prompt: str) -> dict:
-        """
-        Get request data for DeepSeek API calls.
-        
-        Args:
-            prompt (str): The prompt to send to DeepSeek
-            
-        Returns:
-            dict: Request data dictionary for DeepSeek API
-        """
-        return {
-            'model': self.DEEPSEEK_MODEL,
-            'messages': [{'role': 'user', 'content': prompt}],
-            'temperature': self.DEEPSEEK_TEMPERATURE,
-            'max_tokens': self.DEEPSEEK_MAX_TOKENS
-        }
+
     
     # ============================================================================
     # D3.js THEME AND DIMENSION HELPERS

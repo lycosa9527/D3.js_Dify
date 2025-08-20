@@ -1,17 +1,20 @@
 """
-Brace Map Agent - Dynamic Positioning System
-
-This agent implements a content-aware brace map generation system that dynamically
-positions nodes based on the actual content structure, following the principles
-outlined in the comprehensive architecture document.
+Brace Map Agent for MindGraph
+Generates hierarchical brace maps with flexible layout systems
 """
 
-import json
+import logging
 import math
-from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple, Any, Union
+from typing import List, Dict, Any, Optional, Tuple, Union
+from dataclasses import dataclass
 from enum import Enum
+
+logger = logging.getLogger(__name__)
+
+# ============================================================================
+# ENUMS AND DATA STRUCTURES
+# ============================================================================
 
 # Configuration constants
 BRACE_SPACING_CONFIG = {
@@ -43,26 +46,7 @@ CHAR_WIDTH_CONFIG = {
 from config import Config
 
 
-class DiagramDebugger:
-    """Simple debugger for diagram generation"""
-    
-    def __init__(self):
-        self.logs = []
-    
-    def log(self, message: str):
-        """Log a debug message"""
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        log_entry = f"[{timestamp}] {message}"
-        self.logs.append(log_entry)
-        print(log_entry)  # Also print to console for immediate feedback
-    
-    def get_logs(self) -> List[str]:
-        """Get all logged messages"""
-        return self.logs.copy()
-    
-    def clear_logs(self):
-        """Clear all logged messages"""
-        self.logs.clear()
+# Debug logging removed for production
 
 
 class LayoutAlgorithm(Enum):
@@ -367,8 +351,8 @@ class ContextAwareAlgorithmSelector:
 class BlockBasedPositioningSystem:
     """Block-based positioning system that arranges nodes like LEGO pieces"""
     
-    def __init__(self, debugger: DiagramDebugger):
-        self.debugger = debugger
+    def __init__(self):
+        pass
     
     def arrange_blocks(self, spec: Dict, dimensions: Dict, theme: Dict) -> List[BlockUnit]:
         """Arrange blocks using LEGO-like positioning"""
@@ -637,8 +621,8 @@ class BlockBasedPositioningSystem:
 class FlexibleLayoutCalculator:
     """Implements the flexible dynamic layout algorithm"""
     
-    def __init__(self, debugger: DiagramDebugger):
-        self.debugger = debugger
+    def __init__(self):
+        pass
     
     def calculate_text_dimensions(self, spec: Dict, theme: Dict) -> Dict[str, Any]:
         """Calculate text dimensions for all nodes"""
@@ -1103,12 +1087,11 @@ class BraceMapAgent:
     """Brace Map Agent with block-based positioning system"""
     
     def __init__(self):
-        self.debugger = DiagramDebugger()
         self.context_manager = ContextManager()
         self.llm_processor = LLMHybridProcessor()
         self.algorithm_selector = ContextAwareAlgorithmSelector(self.context_manager)
-        self.layout_calculator = FlexibleLayoutCalculator(self.debugger)
-        self.block_positioning = BlockBasedPositioningSystem(self.debugger)
+        self.layout_calculator = FlexibleLayoutCalculator()
+        self.block_positioning = BlockBasedPositioningSystem()
         
         # Initialize with default theme
         self.default_theme = {
@@ -1125,7 +1108,7 @@ class BraceMapAgent:
     def generate_diagram(self, spec: Dict, user_id: str = None) -> Dict:
         """Generate brace map diagram using block-based positioning with enhanced validation"""
         start_time = datetime.now()
-        self.debugger.log("Starting block-based brace map generation")
+        # Debug log removed
         
         try:
             # Enhanced input validation
@@ -1133,7 +1116,7 @@ class BraceMapAgent:
                 return {
                     'success': False,
                     'error': 'Invalid specification: must be a non-empty dictionary',
-                    'debug_logs': self.debugger.get_logs()
+                    'debug_logs': []
                 }
             
             # Validate required fields - no fallbacks
@@ -1141,14 +1124,14 @@ class BraceMapAgent:
                 return {
                     'success': False,
                     'error': 'Invalid specification: missing or empty "topic" field',
-                    'debug_logs': self.debugger.get_logs()
+                    'debug_logs': []
                 }
             
             if 'parts' not in spec or not isinstance(spec['parts'], list):
                 return {
                     'success': False,
                     'error': 'Invalid specification: missing or invalid "parts" field',
-                    'debug_logs': self.debugger.get_logs()
+                    'debug_logs': []
                 }
             
             # Validate parts structure with enhanced error messages
@@ -1157,14 +1140,14 @@ class BraceMapAgent:
                     return {
                         'success': False,
                         'error': f'Invalid part at index {i}: must be a dictionary',
-                        'debug_logs': self.debugger.get_logs()
+                        'debug_logs': []
                     }
                 
                 if 'name' not in part or not part['name']:
                     return {
                         'success': False,
                         'error': f'Invalid part at index {i}: missing or empty "name" field',
-                        'debug_logs': self.debugger.get_logs()
+                        'debug_logs': []
                     }
                 
                 # Validate subparts structure
@@ -1174,7 +1157,7 @@ class BraceMapAgent:
                     return {
                         'success': False,
                         'error': f'Invalid part at index {i}: "subparts" must be a list',
-                        'debug_logs': self.debugger.get_logs()
+                        'debug_logs': []
                     }
                 
                 # Validate subparts with enhanced error messages
@@ -1183,14 +1166,14 @@ class BraceMapAgent:
                         return {
                             'success': False,
                             'error': f'Invalid subpart at part {i}, subpart {j}: must be a dictionary',
-                            'debug_logs': self.debugger.get_logs()
+                            'debug_logs': []
                         }
                     
                     if 'name' not in subpart or not subpart['name']:
                         return {
                             'success': False,
                             'error': f'Invalid subpart at part {i}, subpart {j}: missing or empty "name" field',
-                            'debug_logs': self.debugger.get_logs()
+                            'debug_logs': []
                         }
             
             # Validate empty specification
@@ -1198,7 +1181,7 @@ class BraceMapAgent:
                 return {
                     'success': False,
                     'error': 'Invalid specification: must have at least one part',
-                    'debug_logs': self.debugger.get_logs()
+                    'debug_logs': []
                 }
             
             # Store user context if user_id provided
@@ -1215,7 +1198,7 @@ class BraceMapAgent:
             complexity = self.llm_processor.analyze_complexity(spec)
             strategy = self.llm_processor.determine_strategy(complexity, context.get('preferences'))
             
-            self.debugger.log(f"Complexity: {complexity.value}, Strategy: {strategy.value}")
+            # Debug log removed
             
             # Select layout algorithm
             algorithm = self.algorithm_selector.select_algorithm(spec, user_id)
@@ -1224,7 +1207,7 @@ class BraceMapAgent:
             dimensions = self._calculate_dimensions(spec)
             
             # Use block-based positioning system
-            self.debugger.log("Using block-based positioning system")
+            # Debug log removed
             block_units = self.block_positioning.arrange_blocks(spec, dimensions, self.default_theme)
             
             # Convert block units to NodePosition format for compatibility
@@ -1235,7 +1218,7 @@ class BraceMapAgent:
                 return {
                     'success': False,
                     'error': 'Failed to generate nodes from specification',
-                    'debug_logs': self.debugger.get_logs()
+                    'debug_logs': []
                 }
             
             # Calculate optimal canvas dimensions
@@ -1266,7 +1249,7 @@ class BraceMapAgent:
                 return {
                     'success': False,
                     'error': 'Failed to generate SVG data',
-                    'debug_logs': self.debugger.get_logs()
+                    'debug_logs': []
                 }
             
             # Calculate performance metrics
@@ -1280,18 +1263,18 @@ class BraceMapAgent:
                 'complexity': complexity.value,
                 'strategy': strategy.value,
                 'processing_time': processing_time,
-                'debug_logs': self.debugger.get_logs()
+                'debug_logs': []
             }
             
-            self.debugger.log(f"Block-based generation completed in {processing_time:.3f}s")
+            # Debug log removed
             return result
             
         except Exception as e:
-            self.debugger.log(f"Error in block-based diagram generation: {str(e)}")
+            # Debug log removed}")
             return {
                 'success': False,
                 'error': str(e),
-                'debug_logs': self.debugger.get_logs()
+                'debug_logs': []
             }
     
     def _convert_blocks_to_nodes(self, block_units: List[BlockUnit], spec: Dict, dimensions: Dict) -> Tuple[List[NodePosition], List[UnitPosition]]:
@@ -1764,7 +1747,7 @@ class BraceMapAgent:
             parts_center_y = sum(part_centers) / len(part_centers)
             topic_center_y = topic_node.y + topic_node.height / 2
             original_topic_part_alignment = topic_center_y - parts_center_y
-            print(f"DEBUG: Original topic-part alignment: {original_topic_part_alignment:.1f}")
+            # Original topic-part alignment calculated
         
         # Apply offset to all nodes
         adjusted_nodes = []
@@ -1797,15 +1780,12 @@ class BraceMapAgent:
                 # Calculate the new topic Y position
                 new_topic_y = target_topic_center_y - adjusted_topic.height / 2
                 
-                print(f"DEBUG: New parts center: {new_parts_center_y:.1f}")
-                print(f"DEBUG: Target topic center: {target_topic_center_y:.1f}")
-                print(f"DEBUG: New topic Y: {new_topic_y:.1f}")
-                print(f"DEBUG: Before adjustment - topic Y: {adjusted_topic.y:.1f}")
+                # Topic position adjustment completed
                 
                 # Update topic position
                 adjusted_topic.y = new_topic_y
                 
-                print(f"DEBUG: After adjustment - topic Y: {adjusted_topic.y:.1f}")
+                # Topic position updated
         
         return adjusted_nodes
     
@@ -1971,10 +1951,10 @@ class BraceMapAgent:
         serialized_nodes = []
         for node in nodes:
             serialized_node = {
-                'x': node.x,
-                'y': node.y,
-                'width': node.width,
-                'height': node.height,
+                'x': round(node.x, 1) if isinstance(node.x, (int, float)) else node.x,
+                'y': round(node.y, 1) if isinstance(node.y, (int, float)) else node.y,
+                'width': round(node.width, 1) if isinstance(node.width, (int, float)) else node.width,
+                'height': round(node.height, 1) if isinstance(node.height, (int, float)) else node.height,
                 'text': node.text,
                 'node_type': node.node_type,
                 'part_index': node.part_index,

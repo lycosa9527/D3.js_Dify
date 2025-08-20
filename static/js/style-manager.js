@@ -75,17 +75,17 @@ class StyleManager {
                 fontConcept: 14
             },
             brace_map: {
-                topicFill: '#e3f2fd',
-                topicText: '#000000',
-                topicStroke: '#35506b',
+                topicFill: '#1976d2',
+                topicText: '#ffffff',
+                topicStroke: '#0d47a1',
                 topicStrokeWidth: 3,
                 partFill: '#e3f2fd',
                 partText: '#333333',
                 partStroke: '#4e79a7',
                 partStrokeWidth: 2,
-                subpartFill: '#f8f9fa',
-                subpartText: '#666666',
-                subpartStroke: '#6c757d',
+                subpartFill: '#bbdefb',
+                subpartText: '#333333',
+                subpartStroke: '#90caf9',
                 subpartStrokeWidth: 1,
                 fontTopic: 18,
                 fontPart: 16,
@@ -162,7 +162,7 @@ class StyleManager {
             window.styleManager = this;
         }
         
-        console.log('StyleManager initialized successfully');
+        // StyleManager initialized successfully
     }
 
     /**

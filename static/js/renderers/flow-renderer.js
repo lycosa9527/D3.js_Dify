@@ -12,6 +12,9 @@ if (typeof window.MindGraphUtils === 'undefined') {
     console.error('MindGraphUtils not found! Please load shared-utilities.js first.');
 }
 
+// Helper: round to 1 decimal to reduce floating-point precision noise in canvas calcs
+function __round1(n) { return Math.round(n * 10) / 10; }
+
 function renderFlowchart(spec, theme = null, dimensions = null) {
     d3.select('#d3-container').html('');
 
@@ -121,16 +124,18 @@ function renderFlowchart(spec, theme = null, dimensions = null) {
     const totalSpacing = Math.max(0, nodes.length - 1) * stepSpacing;
     const requiredHeight = padding + (titleSize.h + 30) + totalNodesHeight + totalSpacing + padding;
 
-    // Apply dimensions by sizing container explicitly
+    // Apply dimensions by sizing container explicitly (rounded)
+    const rw = __round1(requiredWidth);
+    const rh = __round1(requiredHeight);
     d3.select('#d3-container')
-        .style('width', requiredWidth + 'px')
-        .style('height', requiredHeight + 'px');
+        .style('width', rw + 'px')
+        .style('height', rh + 'px');
 
     // Create visible SVG
     const svg = d3.select('#d3-container').append('svg')
-        .attr('width', requiredWidth)
-        .attr('height', requiredHeight)
-        .attr('viewBox', `0 0 ${requiredWidth} ${requiredHeight}`)
+        .attr('width', rw)
+        .attr('height', rh)
+        .attr('viewBox', `0 0 ${rw} ${rh}`)
         .attr('preserveAspectRatio', 'xMinYMin meet');
 
     // Remove temp svg
@@ -149,7 +154,7 @@ function renderFlowchart(spec, theme = null, dimensions = null) {
         .text(spec.title);
 
     // Vertical layout
-    const centerX = requiredWidth / 2;
+    const centerX = rw / 2;
     let yCursor = titleY + 40;
 
     nodes.forEach((n, i) => {
@@ -550,6 +555,8 @@ function renderFlowMap(spec, theme = null, dimensions = null) {
     // Calculate final dimensions with padding
     const calculatedHeight = contentBottom + padding;
     const calculatedWidth = contentRight + padding;
+    const ch = __round1(calculatedHeight);
+    const cw = __round1(calculatedWidth);
     
     // Step 4: Draw substeps using pre-calculated positions (no overlap possible!)
     allSubstepPositions.forEach((stepPositions, stepIdx) => {
@@ -613,24 +620,24 @@ function renderFlowMap(spec, theme = null, dimensions = null) {
     });
     
     // Update SVG dimensions to match calculated content
-    if (calculatedWidth > baseWidth || calculatedHeight > baseHeight) {
-        svg.attr('width', calculatedWidth)
-           .attr('height', calculatedHeight)
-           .attr('viewBox', `0 0 ${calculatedWidth} ${calculatedHeight}`);
+    if (cw > baseWidth || ch > baseHeight) {
+        svg.attr('width', cw)
+           .attr('height', ch)
+           .attr('viewBox', `0 0 ${cw} ${ch}`);
         
         d3.select('#d3-container')
-            .style('width', calculatedWidth + 'px')
-            .style('height', calculatedHeight + 'px');
+            .style('width', cw + 'px')
+            .style('height', ch + 'px');
     }
     
     // Add watermark with same styling as bubble maps
     const watermarkText = theme?.watermarkText || 'MindGraph';
-    const watermarkFontSize = Math.max(12, Math.min(20, Math.min(calculatedWidth, calculatedHeight) * 0.025));
-    const watermarkPadding = Math.max(10, Math.min(20, Math.min(calculatedWidth, calculatedHeight) * 0.02));
+    const watermarkFontSize = Math.max(12, Math.min(20, Math.min(cw, ch) * 0.025));
+    const watermarkPadding = Math.max(10, Math.min(20, Math.min(cw, ch) * 0.02));
     
     svg.append('text')
-        .attr('x', calculatedWidth - watermarkPadding)
-        .attr('y', calculatedHeight - watermarkPadding)
+        .attr('x', cw - watermarkPadding)
+        .attr('y', ch - watermarkPadding)
         .attr('text-anchor', 'end')
         .attr('dominant-baseline', 'alphabetic')
         .attr('fill', '#2c3e50')
@@ -644,94 +651,190 @@ function renderFlowMap(spec, theme = null, dimensions = null) {
 
 function renderBridgeMap(spec, theme = null, dimensions = null, containerId = 'd3-container') {
     d3.select(`#${containerId}`).html('');
-    if (!spec || !spec.topic || !Array.isArray(spec.analogies)) {
+    
+    // Validate spec
+    if (!spec || !Array.isArray(spec.analogies) || spec.analogies.length === 0) {
         d3.select(`#${containerId}`).append('div').style('color', 'red').text('Invalid spec for bridge map');
         return;
     }
     
-    const baseWidth = dimensions?.baseWidth || 800;
-    const baseHeight = dimensions?.baseHeight || 200;
-    const padding = dimensions?.padding || 40;
+    // Validate that analogies have the correct structure
+    if (!spec.analogies.every(analogy => analogy.left && analogy.right)) {
+        d3.select(`#${containerId}`).append('div').style('color', 'red').text('Invalid analogy structure. Each analogy must have left and right properties.');
+        return;
+    }
     
+    // Calculate optimal dimensions based on content (exactly as in old renderer)
+    const numAnalogies = spec.analogies.length;
+    const minWidthPerAnalogy = 120; // Minimum width needed per analogy pair
+    const minPadding = 40; // Minimum padding on sides
+    
+    // Calculate optimal width: enough space for all analogies + separators + padding
+    const contentWidth = (numAnalogies * minWidthPerAnalogy) + ((numAnalogies - 1) * 60); // 60px for separator spacing
+    const optimalWidth = Math.max(contentWidth + (2 * minPadding), dimensions?.baseWidth || 600);
+    
+    // Calculate optimal height: enough space for text + vertical lines + padding
+    const textHeight = 40; // Height for text elements
+    const lineHeight = 50; // Height for vertical connection lines
+    const optimalHeight = Math.max(textHeight + lineHeight + (2 * minPadding), dimensions?.baseHeight || 200);
+    
+    // Use calculated dimensions or fall back to provided dimensions
+    const width = optimalWidth;
+    const height = optimalHeight;
+    const padding = minPadding; // Use minimal padding to reduce empty space
+    
+    // Create SVG
+    const svg = d3.select(`#${containerId}`)
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height)
+        .attr('viewBox', `0 0 ${width} ${height}`)
+        .style('background-color', '#f8f8f8'); // Light background to see boundaries
+    
+    // Apply theme (exactly as in old renderer)
     const THEME = {
-        topicFill: '#2c3e50',
-        topicText: '#ffffff',
-        analogyFill: '#1976d2',
-        analogyText: '#ffffff',
-        bridgeColor: '#95a5a6',
-        fontTopic: 16,
-        fontAnalogy: 14,
-        strokeWidth: 2,
-        ...theme
+        backgroundColor: '#ffffff',
+        analogyTextColor: '#2c3e50',
+        analogyFontSize: 14,
+        bridgeColor: '#666666', // Changed to grey for lines and triangles
+        bridgeWidth: 3,
+        stroke: '#2c3e50',
+        strokeWidth: 1,
+        fontFamily: 'Inter, Segoe UI, sans-serif' // Changed back to Inter
     };
     
-    const svg = d3.select(`#${containerId}`).append('svg')
-        .attr('width', baseWidth)
-        .attr('height', baseHeight)
-        .attr('viewBox', `0 0 ${baseWidth} ${baseHeight}`)
-        .attr('preserveAspectRatio', 'xMidYMid meet');
+    // 1. Create horizontal main line (ensure it's visible) - EXACTLY as in old renderer
+    const mainLine = svg.append("line")
+        .attr("x1", padding)
+        .attr("y1", height/2)
+        .attr("x2", width - padding)
+        .attr("y2", height/2)
+        .attr("stroke", "#666666") // Changed to grey
+        .attr("stroke-width", 4); // Use attr instead of style
     
-    // Calculate positions
-    const centerY = baseHeight / 2;
-    const topicWidth = 150;
-    const analogySpacing = (baseWidth - 2 * padding - topicWidth) / spec.analogies.length;
+    // 2. Calculate separator positions with better spacing - EXACTLY as in old renderer
+    const availableWidth = width - (2 * padding);
+    const sectionWidth = availableWidth / (spec.analogies.length + 1);
     
-    // Draw main topic
-    const topicX = padding + topicWidth / 2;
-    svg.append('rect')
-        .attr('x', topicX - topicWidth / 2)
-        .attr('y', centerY - 25)
-        .attr('width', topicWidth)
-        .attr('height', 50)
-        .attr('rx', 5)
-        .attr('fill', THEME.topicFill)
-        .attr('stroke', THEME.topicFill)
-        .attr('stroke-width', THEME.strokeWidth);
-    
-    svg.append('text')
-        .attr('x', topicX)
-        .attr('y', centerY)
-        .attr('text-anchor', 'middle')
-        .attr('dominant-baseline', 'middle')
-        .attr('fill', THEME.topicText)
-        .attr('font-size', THEME.fontTopic)
-        .attr('font-weight', 'bold')
-        .text(spec.topic);
-    
-    // Draw bridges and analogies
+    // 3. Draw analogy pairs first - EXACTLY as in old renderer
     spec.analogies.forEach((analogy, i) => {
-        const analogyX = padding + topicWidth + (i + 0.5) * analogySpacing;
+        const xPos = padding + (sectionWidth * (i + 1));
+        const isFirstPair = i === 0; // Check if this is the first pair
         
-        // Bridge line
-        svg.append('line')
-            .attr('x1', topicX + topicWidth / 2)
-            .attr('y1', centerY)
-            .attr('x2', analogyX - 60)
-            .attr('y2', centerY)
-            .attr('stroke', THEME.bridgeColor)
-            .attr('stroke-width', 3);
+        // 3.1 Add upstream item (left) - above the main line
+        if (isFirstPair) {
+            // First pair gets rectangle borders with deep blue background and white text
+            const rectWidth = 100;
+            const rectHeight = 30;
+            
+            // Draw rectangle background
+            svg.append("rect")
+                .attr("x", xPos - rectWidth/2)
+                .attr("y", height/2 - 30 - rectHeight/2)
+                .attr("width", rectWidth)
+                .attr("height", rectHeight)
+                .attr("rx", 4)
+                .attr("fill", "#1976d2") // Deep blue from mind map
+                .attr("stroke", "#0d47a1")
+                .attr("stroke-width", 2);
+            
+            // Draw text in white
+            svg.append("text")
+                .attr("x", xPos)
+                .attr("y", height/2 - 30)
+                .attr("text-anchor", "middle")
+                .attr("dominant-baseline", "middle")
+                .text(analogy.left)
+                .style("font-size", THEME.analogyFontSize)
+                .style("fill", "#ffffff") // White text
+                .style("font-weight", "bold");
+        } else {
+            // Regular pairs get normal text styling
+            svg.append("text")
+                .attr("x", xPos)
+                .attr("y", height/2 - 30)
+                .attr("text-anchor", "middle")
+                .text(analogy.left)
+                .style("font-size", THEME.analogyFontSize)
+                .style("fill", THEME.analogyTextColor)
+                .style("font-weight", "bold");
+        }
         
-        // Analogy box
-        const analogyWidth = 120;
-        svg.append('rect')
-            .attr('x', analogyX - analogyWidth / 2)
-            .attr('y', centerY - 25)
-            .attr('width', analogyWidth)
-            .attr('height', 50)
-            .attr('rx', 5)
-            .attr('fill', THEME.analogyFill)
-            .attr('stroke', THEME.analogyFill)
-            .attr('stroke-width', THEME.strokeWidth);
+        // 3.2 Add downstream item (right) - below the main line
+        if (isFirstPair) {
+            // First pair gets rectangle borders with deep blue background and white text
+            const rectWidth = 100;
+            const rectHeight = 30;
+            
+            // Draw rectangle background
+            svg.append("rect")
+                .attr("x", xPos - rectWidth/2)
+                .attr("y", height/2 + 40 - rectHeight/2)
+                .attr("width", rectWidth)
+                .attr("height", rectHeight)
+                .attr("rx", 4)
+                .attr("fill", "#1976d2") // Deep blue from mind map
+                .attr("stroke", "#0d47a1")
+                .attr("stroke-width", 2);
+            
+            // Draw text in white
+            svg.append("text")
+                .attr("x", xPos)
+                .attr("y", height/2 + 40)
+                .attr("text-anchor", "middle")
+                .attr("dominant-baseline", "middle")
+                .text(analogy.right)
+                .style("font-size", THEME.analogyFontSize)
+                .style("fill", "#ffffff") // White text
+                .style("font-weight", "bold");
+        } else {
+            // Regular pairs get normal text styling
+            svg.append("text")
+                .attr("x", xPos)
+                .attr("y", height/2 + 40)
+                .attr("text-anchor", "middle")
+                .text(analogy.right)
+                .style("font-size", THEME.analogyFontSize)
+                .style("fill", THEME.analogyTextColor)
+                .style("font-weight", "bold");
+        }
         
-        svg.append('text')
-            .attr('x', analogyX)
-            .attr('y', centerY)
-            .attr('text-anchor', 'middle')
-            .attr('dominant-baseline', 'middle')
-            .attr('fill', THEME.analogyText)
-            .attr('font-size', THEME.fontAnalogy)
-            .text(analogy);
+        // 3.3 Add vertical connection line (made invisible) - EXACTLY as in old renderer
+        svg.append("line")
+            .attr("x1", xPos)
+            .attr("y1", height/2 - 20) // Connect to upstream item
+            .attr("x2", xPos)
+            .attr("y2", height/2 + 30) // Connect to downstream item
+            .attr("stroke", "transparent") // Make vertical lines invisible
+            .attr("stroke-width", 3); // Use attr instead of style
     });
+    
+    // 4. Draw "as" separators (one less than analogy pairs) - positioned to the right of analogy pairs
+    // EXACTLY as in old renderer
+    for (let i = 0; i < spec.analogies.length - 1; i++) {
+        // Position separator between analogy pairs (to the right of current pair)
+        const xPos = padding + (sectionWidth * (i + 1.5)); // Position between pairs
+        
+        // 4.1 Add little triangle separator on the main line - pointing UPWARD
+        const triangleSize = 8; // Back to normal size
+        const trianglePath = `M ${xPos - triangleSize} ${height/2} L ${xPos} ${height/2 - triangleSize} L ${xPos + triangleSize} ${height/2} Z`;
+        
+        svg.append("path")
+            .attr("d", trianglePath)
+            .attr("fill", "#666666") // Changed to grey
+            .attr("stroke", "#666666") // Changed to grey
+            .attr("stroke-width", 2); // Use attr instead of style
+        
+        // 4.2 Add "as" text above the triangle - EXACTLY as in old renderer
+        svg.append("text")
+            .attr("x", xPos)
+            .attr("y", height/2 - triangleSize - 8) // Closer to triangle
+            .attr("text-anchor", "middle")
+            .text("as")
+            .style("font-weight", "bold")
+            .style("font-size", THEME.analogyFontSize + 2)
+            .style("fill", "#666666"); // Changed to grey to match triangles
+    }
     
     // Watermark
     if (typeof window.MindGraphUtils !== 'undefined' && window.MindGraphUtils.addWatermark) {
@@ -901,17 +1004,19 @@ function renderMultiFlowMap(spec, theme = null, dimensions = null) {
     // Use calculated dimensions or agent recommendations, whichever is larger
     const finalWidth = Math.max(baseWidth, requiredWidth);
     const finalHeight = Math.max(baseHeight, requiredHeight);
+    const fW = __round1(finalWidth);
+    const fH = __round1(finalHeight);
     
     // STEP 2: Create SVG with proper dimensions
     const svg = d3.select('#d3-container').append('svg')
-        .attr('width', finalWidth)
-        .attr('height', finalHeight)
-        .attr('viewBox', `0 0 ${finalWidth} ${finalHeight}`)
+        .attr('width', fW)
+        .attr('height', fH)
+        .attr('viewBox', `0 0 ${fW} ${fH}`)
         .attr('preserveAspectRatio', 'xMinYMin meet');
     
     // STEP 3: Calculate layout positions
-    const centerX = finalWidth / 2;
-    const centerY = finalHeight / 2;
+    const centerX = fW / 2;
+    const centerY = fH / 2;
     
     // Position side nodes with proper spacing
     const causeCX = sideMargin + maxCauseW / 2;
@@ -1007,11 +1112,11 @@ function renderMultiFlowMap(spec, theme = null, dimensions = null) {
     const watermarkText = 'MindGraph';
     
     // Calculate dynamic padding and font size like bubble map (increased font size)
-    const watermarkPadding = Math.max(5, Math.min(15, Math.min(finalWidth, finalHeight) * 0.01));
-    const watermarkFontSize = Math.max(12, Math.min(20, Math.min(finalWidth, finalHeight) * 0.025));
+    const watermarkPadding = Math.max(5, Math.min(15, Math.min(fW, fH) * 0.01));
+    const watermarkFontSize = Math.max(12, Math.min(20, Math.min(fW, fH) * 0.025));
     
-    const watermarkX = finalWidth - watermarkPadding;
-    const watermarkY = finalHeight - watermarkPadding;
+    const watermarkX = fW - watermarkPadding;
+    const watermarkY = fH - watermarkPadding;
     
     svg.append('text')
         .attr('x', watermarkX)
