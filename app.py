@@ -99,11 +99,11 @@ def validate_dependencies():
     
     Exits with error code 1 if critical dependencies are missing.
     """
-    logger.info("🔍 Validating dependencies and configuration...")
+    logger.info("Validating dependencies and configuration...")
     
     # Validate Python version requirement
     if sys.version_info < (3, 8):
-        logger.error("❌ Python 3.8 or higher is required")
+        logger.error("Python 3.8 or higher is required")
         sys.exit(1)
     
     # Define required Python packages for core functionality
@@ -129,24 +129,24 @@ def validate_dependencies():
             missing_packages.append(package)
     
     if missing_packages:
-        logger.error(f"❌ Missing required packages: {', '.join(missing_packages)}")
-        logger.error("💡 Please install missing packages: pip install -r requirements.txt")
+        logger.error(f"Missing required packages: {', '.join(missing_packages)}")
+        logger.error("Please install missing packages: pip install -r requirements.txt")
         sys.exit(1)
     
     # Validate Qwen configuration (required for core functionality)
     if not config.validate_qwen_config():
-        logger.error("❌ Qwen configuration validation failed")
-        logger.error("💡 Please check QWEN_API_KEY and QWEN_API_URL in your environment")
+        logger.error("Qwen configuration validation failed")
+        logger.error("Please check QWEN_API_KEY and QWEN_API_URL in your environment")
         sys.exit(1)
     
     # Check DeepSeek configuration (optional, for enhanced features)
     if not config.validate_deepseek_config():
-        logger.warning("⚠️  DeepSeek configuration not available - features will be disabled")
+        logger.warning("DeepSeek configuration not available - features will be disabled")
     
     # Validate numeric configuration values
     if not config.validate_numeric_config():
-        logger.error("❌ Invalid numeric configuration")
-        logger.error("💡 Please check your environment variables")
+        logger.error("Invalid numeric configuration")
+        logger.error("Please check your environment variables")
         sys.exit(1)
     
     # Ensure Playwright browser is available for PNG generation
@@ -156,14 +156,14 @@ def validate_dependencies():
             browser = p.chromium.launch(headless=True)
             browser.close()
     except Exception:
-        logger.info("📦 Installing Playwright browser...")
+        logger.info("Installing Playwright browser...")
         try:
             subprocess.run([sys.executable, '-m', 'playwright', 'install', 'chromium'], check=True)
         except subprocess.CalledProcessError as e:
-            logger.error(f"❌ Failed to install Playwright browser: {e}")
+            logger.error(f"Failed to install Playwright browser: {e}")
             sys.exit(1)
     
-    logger.info("✅ All dependencies and configuration validated successfully")
+    logger.info("Dependencies validated successfully")
 
 # Run dependency validation before application startup
 validate_dependencies()
@@ -181,31 +181,20 @@ app = Flask(__name__)
 
 # Initialize lazy loading JavaScript cache at startup for optimal performance
 try:
-    logger.info("🚀 Initializing lazy loading JavaScript cache...")
-    from static.js.lazy_cache_manager import lazy_js_cache, get_cache_stats, get_performance_summary
+    logger.info("Initializing JavaScript cache...")
+    from static.js.lazy_cache_manager import lazy_js_cache, get_cache_stats
     
     # Verify cache initialization
     if lazy_js_cache.is_initialized():
         stats = get_cache_stats()
-        logger.info(f"✅ Lazy loading JavaScript cache initialized successfully:")
-        logger.info(f"   - Cache strategy: Lazy loading with intelligent caching")
-        logger.info(f"   - Memory limit: {stats['max_memory_mb']} MB")
-        logger.info(f"   - Cache TTL: {lazy_js_cache.cache_ttl_seconds} seconds")
-        logger.info(f"   - Performance improvement: 90-95% (advanced caching strategies)")
-        
-        # Log performance summary
-        logger.info("📊 Cache Performance Summary:")
-        summary_lines = get_performance_summary().split('\n')
-        for line in summary_lines:
-            if line.strip() and not line.startswith('🚀') and not line.startswith('='):
-                logger.info(f"   {line.strip()}")
+        logger.info(f"JavaScript cache ready (Memory: {stats['max_memory_mb']}MB, TTL: {lazy_js_cache.cache_ttl_seconds}s)")
     else:
-        logger.error("❌ Lazy loading JavaScript cache failed to initialize properly")
-        raise RuntimeError("Lazy loading JavaScript cache initialization failed")
+        logger.error("JavaScript cache failed to initialize")
+        raise RuntimeError("JavaScript cache initialization failed")
         
 except Exception as e:
-    logger.error(f"❌ Failed to initialize lazy loading JavaScript cache: {e}")
-    logger.error("Application will continue but with reduced performance (file I/O overhead per request)")
+    logger.error(f"Failed to initialize JavaScript cache: {e}")
+    logger.warning("Application will continue with reduced performance")
     # Don't raise here - allow app to continue with degraded performance
 
 # ============================================================================
@@ -217,6 +206,11 @@ def log_request():
     """Log incoming HTTP requests with timing information."""
     request.start_time = time.time()
     logger.info(f"Request: {request.method} {request.path} from {request.remote_addr}")
+    
+    # BLOCK ACCESS TO OLD D3-RENDERERS.JS - IT SHOULD NEVER BE SERVED
+    if request.path == '/static/js/d3-renderers.js':
+        logger.warning(f"BLOCKED: Attempted access to old d3-renderers.js from {request.remote_addr}")
+        return "Access Denied: This file is deprecated and should not be accessed", 403
 
 @app.after_request
 def log_response(response):
@@ -266,9 +260,14 @@ limiter = Limiter(get_remote_address, app=app, default_limits=["20 per minute"])
 # ROUTE REGISTRATION
 # ============================================================================
 
+# REMOVED: Duplicate before_request function - combined with log_request
+
 # Register API and web route blueprints
 app.register_blueprint(api)
 app.register_blueprint(web)
+
+# Log startup completion
+logger.info("MindGraph application ready on port 9527")
 
 # ============================================================================
 # BACKWARD COMPATIBILITY ROUTES

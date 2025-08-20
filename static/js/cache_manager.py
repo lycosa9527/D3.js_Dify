@@ -43,16 +43,17 @@ class JavaScriptCache:
         try:
             # Define file paths relative to the static/js directory
             js_dir = Path(__file__).parent
-            files = {
+            # Core JavaScript files
+            self._js_files = {
                 'theme_config': js_dir / 'theme-config.js',
                 'style_manager': js_dir / 'style-manager.js',
-                'd3_renderers': js_dir / 'd3-renderers.js'
+                # REMOVED: 'd3_renderers': js_dir / 'd3-renderers.js' - No longer needed
             }
             
             total_size = 0
             files_loaded = 0
             
-            for key, file_path in files.items():
+            for key, file_path in self._js_files.items():
                 if file_path.exists():
                     try:
                         with open(file_path, 'r', encoding='utf-8') as f:
@@ -96,9 +97,8 @@ class JavaScriptCache:
         """Get cached style manager JavaScript."""
         return self.style_manager
     
-    def get_d3_renderers(self):
-        """Get cached D3 renderers JavaScript."""
-        return self.d3_renderers
+    # REMOVED: get_d3_renderers function - no longer needed
+    # The modular system handles all renderer loading now
     
     def get_cache_stats(self):
         """Get cache statistics for monitoring."""
@@ -108,8 +108,8 @@ class JavaScriptCache:
         """Check if the cache has been properly initialized."""
         return all([
             self.theme_config is not None,
-            self.style_manager is not None,
-            self.d3_renderers is not None
+            self.style_manager is not None
+            # REMOVED: d3_renderers check - no longer needed
         ])
     
     def reload_cache(self):
@@ -131,9 +131,8 @@ def get_style_manager():
     """Get cached style manager JavaScript."""
     return js_cache.get_style_manager()
 
-def get_d3_renderers():
-    """Get cached D3 renderers JavaScript."""
-    return js_cache.get_d3_renderers()
+# REMOVED: get_d3_renderers function - no longer needed
+# The modular system handles all renderer loading now
 
 def get_cache_stats():
     """Get cache statistics for monitoring."""

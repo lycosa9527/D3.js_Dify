@@ -42,7 +42,7 @@ class DynamicRendererLoader {
             
             // Specialized
 
-            'timeline': 'timeline-renderer',
+        
             'brace_map': 'brace-renderer',
 
         };
@@ -159,8 +159,8 @@ class DynamicRendererLoader {
             'bubble-map-renderer': 'BubbleMapRenderer',
             'tree-renderer': 'TreeRenderer',
             'flow-renderer': 'FlowRenderer',
-            'venn-renderer': 'VennRenderer',
-            'timeline-renderer': 'TimelineRenderer',
+        
+        
             'brace-renderer': 'BraceRenderer',
             'semantic-renderer': 'SemanticRenderer'
         };

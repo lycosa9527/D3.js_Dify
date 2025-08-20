@@ -12,7 +12,19 @@ if (typeof window.MindGraphUtils === 'undefined') {
     console.error('MindGraphUtils not found! Please load shared-utilities.js first.');
 }
 
-const { getMeasurementContainer, addWatermark } = window.MindGraphUtils;
+// Import required functions from shared utilities - with error handling
+let getMeasurementContainer, addWatermark;
+try {
+    getMeasurementContainer = window.MindGraphUtils.getMeasurementContainer;
+    addWatermark = window.MindGraphUtils.addWatermark;
+    
+    if (typeof getMeasurementContainer !== 'function' || typeof addWatermark !== 'function') {
+        throw new Error('Required functions not available from shared-utilities.js');
+    }
+} catch (error) {
+    console.error('Failed to import required functions:', error);
+    throw new Error('Failed to import required functions from shared-utilities.js');
+}
 
 function renderConceptMap(spec, theme = null, dimensions = null) {
     d3.select('#d3-container').html('');
@@ -238,8 +250,53 @@ function renderConceptMap(spec, theme = null, dimensions = null) {
         renderConceptMapWithForceLayout(spec, svg, THEME, width, height);
     }
     
-    // Watermark
-    addWatermark(svg, theme);
+    // Watermark - matching mindmap style
+    const watermarkText = 'MindGraph';
+    
+    // Get SVG dimensions
+    const w = +svg.attr('width');
+    const h = +svg.attr('height');
+    
+    // Check if SVG uses viewBox
+    const viewBox = svg.attr('viewBox');
+    let watermarkX, watermarkY, watermarkFontSize;
+    
+    if (viewBox) {
+        // SVG uses viewBox - position within viewBox coordinate system
+        const viewBoxParts = viewBox.split(' ').map(Number);
+        const viewBoxWidth = viewBoxParts[2];
+        const viewBoxHeight = viewBoxParts[3];
+        
+        // Calculate font size based on viewBox dimensions
+        watermarkFontSize = Math.max(8, Math.min(16, Math.min(viewBoxWidth, viewBoxHeight) * 0.02));
+        
+        // Calculate padding based on viewBox size
+        const padding = Math.max(5, Math.min(15, Math.min(viewBoxWidth, viewBoxHeight) * 0.01));
+        
+        // Position in lower right corner of viewBox
+        watermarkX = viewBoxParts[0] + viewBoxWidth - padding;
+        watermarkY = viewBoxParts[1] + viewBoxHeight - padding;
+    } else {
+        // SVG uses standard coordinate system
+        watermarkFontSize = Math.max(12, Math.min(20, Math.min(w, h) * 0.025));
+        const padding = Math.max(10, Math.min(20, Math.min(w, h) * 0.02));
+        watermarkX = w - padding;
+        watermarkY = h - padding;
+    }
+    
+    // Add watermark with proper styling - matching mindmap
+    svg.append('text')
+        .attr('x', watermarkX)
+        .attr('y', watermarkY)
+        .attr('text-anchor', 'end')
+        .attr('dominant-baseline', 'alphabetic')
+        .attr('fill', '#2c3e50')  // Original dark blue-grey color
+        .attr('font-size', watermarkFontSize)
+        .attr('font-family', 'Inter, Segoe UI, sans-serif')
+        .attr('font-weight', '500')
+        .attr('opacity', 0.8)     // Original 80% opacity
+        .attr('pointer-events', 'none')
+        .text(watermarkText);
 }
 
 function renderConceptMapWithForceLayout(spec, svg, THEME, width, height) {

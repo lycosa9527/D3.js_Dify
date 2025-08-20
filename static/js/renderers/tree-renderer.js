@@ -7,19 +7,42 @@
  * Performance Impact: Loads only ~60KB instead of full 213KB
  */
 
+// CRITICAL FIX: Add execution tracking
+console.log('🌳 Tree renderer: Script execution started');
+console.log('🌳 Tree renderer: Script location:', window.location.href);
+console.log('🌳 Tree renderer: Current time:', new Date().toISOString());
+
 // Check if shared utilities are available
+console.log('🌳 Tree renderer: Checking dependencies...');
+console.log('🌳 Tree renderer: window.MindGraphUtils available:', typeof window.MindGraphUtils);
+console.log('🌳 Tree renderer: window.addWatermark available:', typeof window.addWatermark);
+
 if (typeof window.MindGraphUtils === 'undefined') {
-    console.error('MindGraphUtils not found! Please load shared-utilities.js first.');
+    console.error('🌳 Tree renderer: MindGraphUtils not found! Please load shared-utilities.js first.');
+    // Don't continue if dependencies are missing
+    throw new Error('MindGraphUtils not available - shared-utilities.js must be loaded first');
 }
 
-const { getTextRadius, addWatermark, getThemeDefaults } = window.MindGraphUtils;
+// Import required functions from shared utilities - with error handling
+// CRITICAL FIX: Don't redeclare addWatermark, use the global one
+if (typeof window.MindGraphUtils === 'undefined' || typeof window.MindGraphUtils.addWatermark !== 'function') {
+    console.error('🌳 Tree renderer: addWatermark function not found in MindGraphUtils');
+    throw new Error('addWatermark function not available - shared-utilities.js must be loaded first');
+}
 
+// Main tree map rendering function - EXPOSE TO GLOBAL SCOPE
 function renderTreeMap(spec, theme = null, dimensions = null) {
     d3.select('#d3-container').html('');
     
     // Validate spec
     if (!spec || !spec.topic || !Array.isArray(spec.children)) {
         d3.select('#d3-container').append('div').style('color', 'red').text('Invalid spec for tree map');
+        return;
+    }
+    
+    // Handle empty children case
+    if (spec.children.length === 0) {
+        d3.select('#d3-container').append('div').style('color', 'orange').text('Tree map has no branches to display');
         return;
     }
     
@@ -74,9 +97,42 @@ function renderTreeMap(spec, theme = null, dimensions = null) {
         };
     }
     
+    // Ensure THEME is always defined
+    if (!THEME) {
+        THEME = {
+            rootFill: '#1976d2',
+            rootText: '#ffffff',
+            rootStroke: '#0d47a1',
+            rootStrokeWidth: 3,
+            branchFill: '#e3f2fd',
+            branchText: '#333333',
+            branchStroke: '#1976d2',
+            branchStrokeWidth: 2,
+            leafFill: '#f8f9fa',
+            leafText: '#333333',
+            leafStroke: '#1976d2',
+            leafStrokeWidth: 1,
+            fontRoot: 20,
+            fontBranch: 16,
+            fontLeaf: 14
+        };
+    }
+    
     const width = baseWidth;
     const height = baseHeight;
-    var svg = d3.select('#d3-container').append('svg').attr('width', width).attr('height', height);
+    
+    // Apply container background - matching mind map renderer
+    const containerBackground = theme?.background || '#f5f5f5';
+    d3.select('#d3-container')
+        .style('background-color', containerBackground)
+        .style('width', '100%')
+        .style('height', '100%')
+        .style('min-height', `${baseHeight}px`);
+    
+    var svg = d3.select('#d3-container').append('svg')
+        .attr('width', width)
+        .attr('height', height)
+        .style('background-color', containerBackground); // Use the same background color
 
     // Helpers to measure text accurately for width-adaptive rectangles
     const avgCharPx = 0.6; // fallback approximation
@@ -142,19 +198,30 @@ function renderTreeMap(spec, theme = null, dimensions = null) {
 
     // First pass: measure branches and leaves, compute per-column width
     const branchLayouts = spec.children.map((child) => {
+        // Validate child structure
+        if (!child || typeof child.label !== 'string') {
+            console.warn('Invalid child structure:', child);
+            return null;
+        }
+        
         const branchFont = THEME.fontBranch || 16;
         const branchBox = measureSvgTextBox(svg, child.label, branchFont, 14, 10);
         const leafFont = THEME.fontLeaf || 14;
         let maxLeafW = 0;
         const leafBoxes = (Array.isArray(child.children) ? child.children : []).map(leaf => {
+            if (!leaf || typeof leaf.label !== 'string') {
+                console.warn('Invalid leaf structure:', leaf);
+                return null;
+            }
             const b = measureSvgTextBox(svg, leaf.label, leafFont, 12, 8);
             if (b.w > maxLeafW) maxLeafW = b.w;
             return b;
-        });
+        }).filter(box => box !== null); // Filter out invalid leaves
+        
         const columnContentW = Math.max(branchBox.w, maxLeafW);
         const columnWidth = columnContentW + 60; // padding within column to avoid overlap
         return { child, branchFont, branchBox, leafFont, leafBoxes, maxLeafW, columnWidth };
-    });
+    }).filter(layout => layout !== null); // Filter out invalid layouts
 
     // Second pass: assign x positions cumulatively to prevent overlap
     let runningX = padding;
@@ -293,21 +360,138 @@ function renderTreeMap(spec, theme = null, dimensions = null) {
         svg.attr('height', finalNeededHeight);
     }
     
-    // Watermark
-    addWatermark(svg, theme);
+    // Watermark - matching mindmap style
+    const watermarkText = 'MindGraph';
+    
+    // Get SVG dimensions
+    const w = +svg.attr('width');
+    const h = +svg.attr('height');
+    
+    // Check if SVG uses viewBox
+    const viewBox = svg.attr('viewBox');
+    let watermarkX, watermarkY, watermarkFontSize;
+    
+    if (viewBox) {
+        // SVG uses viewBox - position within viewBox coordinate system
+        const viewBoxParts = viewBox.split(' ').map(Number);
+        const viewBoxWidth = viewBoxParts[2];
+        const viewBoxHeight = viewBoxParts[3];
+        
+        // Calculate font size based on viewBox dimensions
+        watermarkFontSize = Math.max(8, Math.min(16, Math.min(viewBoxWidth, viewBoxHeight) * 0.02));
+        
+        // Calculate padding based on viewBox size
+        const padding = Math.max(5, Math.min(15, Math.min(viewBoxWidth, viewBoxHeight) * 0.01));
+        
+        // Position in lower right corner of viewBox
+        watermarkX = viewBoxParts[0] + viewBoxWidth - padding;
+        watermarkY = viewBoxParts[1] + viewBoxHeight - padding;
+    } else {
+        // SVG uses standard coordinate system
+        watermarkFontSize = Math.max(12, Math.min(20, Math.min(w, h) * 0.025));
+        const padding = Math.max(10, Math.min(20, Math.min(w, h) * 0.02));
+        watermarkX = w - padding;
+        watermarkY = h - padding;
+    }
+    
+    // Add watermark with proper styling - matching mindmap
+    svg.append('text')
+        .attr('x', watermarkX)
+        .attr('y', watermarkY)
+        .attr('text-anchor', 'end')
+        .attr('dominant-baseline', 'alphabetic')
+        .attr('fill', '#2c3e50')  // Original dark blue-grey color
+        .attr('font-size', watermarkFontSize)
+        .attr('font-family', 'Inter, Segoe UI, sans-serif')
+        .attr('font-weight', '500')
+        .attr('opacity', 0.8)     // Original 80% opacity
+        .attr('pointer-events', 'none')
+        .text(watermarkText);
 }
 
 
 
-// Export functions for module system
-if (typeof window !== 'undefined') {
-    // Browser environment - attach to window
-    window.TreeRenderer = {
-        renderTreeMap
-    };
-} else if (typeof module !== 'undefined' && module.exports) {
-    // Node.js environment
-    module.exports = {
-        renderTreeMap
-    };
+// CRITICAL FIX: Export functions to global scope for dispatcher access
+console.log('🌳 Tree renderer: Starting function export...');
+console.log('🌳 Tree renderer: renderTreeMap function exists:', typeof renderTreeMap);
+
+// CRITICAL FIX: Use try-catch to ensure export doesn't fail silently
+try {
+    if (typeof window !== 'undefined') {
+        // Browser environment - attach to window
+        console.log('🌳 Tree renderer: Attaching to window object...');
+        
+        // Force the assignment - check if properties already exist
+        if (!window.hasOwnProperty('renderTreeMap')) {
+            Object.defineProperty(window, 'renderTreeMap', {
+                value: renderTreeMap,
+                writable: true,
+                configurable: true
+            });
+            console.log('✅ renderTreeMap property defined');
+        } else {
+            console.log('ℹ️ renderTreeMap property already exists, updating value');
+            window.renderTreeMap = renderTreeMap;
+        }
+        
+        if (!window.hasOwnProperty('TreeRenderer')) {
+            Object.defineProperty(window, 'TreeRenderer', {
+                value: {
+                    renderTreeMap: renderTreeMap
+                },
+                writable: true,
+                configurable: true
+            });
+            console.log('✅ TreeRenderer property defined');
+        } else {
+            console.log('ℹ️ TreeRenderer property already exists, updating value');
+            window.TreeRenderer = { renderTreeMap: renderTreeMap };
+        }
+        
+        console.log('✅ Tree renderer functions exported to global scope');
+        console.log('🌳 Tree renderer: window.renderTreeMap now available:', typeof window.renderTreeMap);
+        console.log('🌳 Tree renderer: window.TreeRenderer now available:', typeof window.TreeRenderer);
+        
+        // Verify the export worked
+        if (typeof window.renderTreeMap === 'function') {
+            console.log('✅ SUCCESS: renderTreeMap is now available globally');
+        } else {
+            console.error('❌ FAILED: renderTreeMap is not available globally');
+        }
+        
+        if (typeof window.TreeRenderer === 'object' && window.TreeRenderer.renderTreeMap) {
+            console.log('✅ SUCCESS: TreeRenderer.renderTreeMap is now available globally');
+        } else {
+            console.error('❌ FAILED: TreeRenderer.renderTreeMap is not available globally');
+        }
+        
+    } else if (typeof module !== 'undefined' && module.exports) {
+        // Node.js environment
+        module.exports = {
+            renderTreeMap,
+            TreeRenderer: {
+                renderTreeMap
+            }
+        };
+    }
+} catch (error) {
+    console.error('❌ CRITICAL ERROR during function export:', error);
+    // Try alternative export method
+    try {
+        console.log('🔄 Attempting alternative export method...');
+        if (typeof window !== 'undefined') {
+            window.renderTreeMap = renderTreeMap;
+            window.TreeRenderer = { renderTreeMap: renderTreeMap };
+            console.log('✅ Alternative export completed');
+        }
+    } catch (altError) {
+        console.error('❌ Alternative export also failed:', altError);
+    }
 }
+
+// CRITICAL FIX: Final execution confirmation
+console.log('🌳 Tree renderer: Script execution completed');
+console.log('🌳 Tree renderer: Final status check:');
+console.log('  - renderTreeMap function defined:', typeof renderTreeMap);
+console.log('  - window.renderTreeMap available:', typeof window.renderTreeMap);
+console.log('  - window.TreeRenderer available:', typeof window.TreeRenderer);

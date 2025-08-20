@@ -48,15 +48,16 @@
 
 ## 🛠️ **HIGH PRIORITY FIXES (20-40% Impact)**
 
-### **3. JavaScript Module Pre-parsing (40% improvement)**
-- **Problem**: Stupid regex parsing of 60KB+ JavaScript files on every request (concatenate then split)
-- **Fix**: Replace regex with direct module loading - eliminate concatenation/splitting cycle
-- **Impact**: 40% faster module loading, eliminates CPU-intensive regex, 30-50% CPU savings
-- **Time**: 1-2 hours (very easy fix)
+### **3. Frontend D3.js Removal (12-21% improvement)** ✅ **COMPLETED**
+- **Problem**: Frontend D3.js rendering causing JavaScript errors and adding 2.2-3.7s to PNG generation
+- **Fix**: Remove D3.js from frontend, go directly to PNG generation via backend
+- **Impact**: 12-21% faster PNG generation, eliminates all frontend JavaScript errors
+- **Time**: 2-3 hours ✅ **COMPLETED**
 - **What It Actually Does**: 
-  - Replace 3 regex lines with 3 function calls
-  - Remove stupid concatenation-then-split approach
-  - Zero impact on rendering workflow - just cleaner loading
+  - Remove D3.js library from frontend templates ✅ **IMPLEMENTED**
+  - Eliminate complex module loading system ✅ **IMPLEMENTED**
+  - Skip frontend rendering, go straight to PNG generation ✅ **IMPLEMENTED**
+  - Simplify frontend to PNG display only ✅ **IMPLEMENTED**
 
 ### **4. Theme System Consolidation (30% improvement)**
 - **Problem**: 4-layer theme merging (backend → style-manager → theme-config → spec)
@@ -146,11 +147,11 @@
 
 ## 📊 **PERFORMANCE ANALYSIS FINDINGS**
 
-### **Current Performance Breakdown (31.5s total)**
-- **LLM Processing**: 21.06s (66.8%) - Qwen API calls (3.59s + 17.45s)
-- **Rendering**: 10.42s (33.1%) - D3.js loading (7s CDN) + final rendering (3.42s)
-- **HTML Generation**: ~0.018s (0.06%) - Already fast enough, not worth optimizing
-- **Critical Insight**: LLM API calls are the main bottleneck, not D3.js or HTML generation
+### **Current Performance Breakdown (17.9s total - Updated)**
+- **LLM Processing**: 8.15s (45.5%) - Qwen API calls (classification + generation)
+- **Backend Rendering**: 9.73s (54.4%) - D3.js + Playwright PNG generation
+- **Frontend**: ~0.02s (0.1%) - PNG display only (D3.js removed)
+- **Critical Insight**: LLM API calls and backend rendering are the main bottlenecks
 
 ### **Misidentified Bottlenecks**
 - **What was thought**: D3.js loading was the main issue
@@ -203,6 +204,21 @@
 
 ---
 
+## 🚀 **FUTURE FEATURES (Not Yet Implemented)**
+
+### **Interactive Diagram Rendering**
+- **Status**: Planned for future development
+- **Purpose**: Real-time interactive diagrams with zoom, pan, hover effects
+- **Requirements**: D3.js frontend integration, module loading system, function validation
+- **Current Status**: Frontend D3.js removed for PNG-only workflow
+- **Implementation Notes**: 
+  - Will require re-adding D3.js to frontend templates
+  - Will need to restore module loading system
+  - Will need interactive diagram containers
+  - Will provide enhanced user experience beyond static PNGs
+
+---
+
 ## 🎯 **IMPLEMENTATION ORDER**
 
 ### **Week 1: Critical Fixes**
@@ -232,14 +248,14 @@
 
 | Fix | Current | After Fix | Improvement | Real Impact |
 |-----|---------|-----------|-------------|-------------|
-| **LLM Processing** | 21.06s | 13.5s | 36% faster | **7.56s saved** |
-| **PNG Generation** | 10.42s | 7.3s | 30% faster | **3.12s saved** |
-| **Module Loading** | 100% | 60% | 40% faster | **0.5s saved** |
+| **LLM Processing** | 8.15s | 5.2s | 36% faster | **2.95s saved** |
+| **Backend Rendering** | 9.73s | 7.4s | 24% faster | **2.33s saved** |
+| **Frontend D3.js** | 2.2-3.7s | 0s | 100% removed | **2.2-3.7s saved** ✅ |
 | **Theme Resolution** | 100% | 70% | 30% faster | **0.3s saved** |
 | **D3.js Data URI** | 0.068s | 0.018s | 74% faster | **0.05s saved** |
-| **Total Time** | 31.5s | 20.9s | **34% faster** | **11.53s saved** |
+| **Total Time** | 17.9s | 12.9s | **28% faster** | **5.5-6.0s saved** |
 
-**Combined Impact**: **34% total performance improvement** (from 31.5s to 20.9s)
+**Combined Impact**: **28% total performance improvement** (from 17.9s to 12.9s)
 
 ---
 

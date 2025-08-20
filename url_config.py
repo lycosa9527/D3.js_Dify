@@ -40,8 +40,11 @@ WEB_TIMING_STATS = '/timing-stats'
 # STATIC RESOURCES
 # ============================================================================
 
-# JavaScript Files
-STATIC_D3_RENDERERS = '/static/js/d3-renderers.js'
+# Static file paths
+STATIC_CSS = '/static/css'
+STATIC_JS = '/static/js'
+STATIC_IMAGES = '/static/images'
+# REMOVED: STATIC_D3_RENDERERS = '/static/js/d3-renderers.js' - No longer needed
 STATIC_STYLE_MANAGER = '/static/js/style-manager.js'
 
 # CSS and External Resources
@@ -81,7 +84,9 @@ def get_web_urls():
 def get_static_urls():
     """Get all static resource URLs."""
     return {
-        'd3_renderers': STATIC_D3_RENDERERS,
+        'css': STATIC_CSS,
+        'js': STATIC_JS,
+        'images': STATIC_IMAGES,
         'style_manager': STATIC_STYLE_MANAGER,
         'd3_cdn': EXTERNAL_D3_CDN,
         'google_fonts': EXTERNAL_GOOGLE_FONTS

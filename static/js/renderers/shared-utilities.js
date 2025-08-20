@@ -213,91 +213,8 @@ function wrapText(text, width) {
     });
 }
 
-// Main rendering dispatcher function
-function renderGraph(type, spec, theme = null, dimensions = null) {
-    console.log('renderGraph called with:', { type, spec, theme, dimensions });
-    
-    // Clear the container first
-    d3.select('#d3-container').html('');
-    
-    // Extract style information from spec if available
-    let integratedTheme = theme;
-    if (spec && spec._style) {
-        console.log('Using integrated styles from spec:', spec._style);
-        // Merge spec styles with backend theme (backend background takes priority)
-        integratedTheme = {
-            ...spec._style,
-            background: theme?.background
-        };
-        console.log('Merged theme background (backend priority):', integratedTheme.background);
-    } else {
-        // Use theme as-is (no fallbacks)
-        integratedTheme = theme;
-        console.log('Using backend theme background:', integratedTheme?.background);
-    }
-    
-    // Extract style metadata for debugging
-    if (spec && spec._style_metadata) {
-        console.log('Style metadata:', spec._style_metadata);
-    }
-    
-    switch (type) {
-        case 'double_bubble_map':
-            renderDoubleBubbleMap(spec, integratedTheme, dimensions);
-            break;
-        case 'bubble_map':
-            renderBubbleMap(spec, integratedTheme, dimensions);
-            break;
-        case 'circle_map':
-            renderCircleMap(spec, integratedTheme, dimensions);
-            break;
-        case 'tree_map':
-            renderTreeMap(spec, integratedTheme, dimensions);
-            break;
-        case 'concept_map':
-            renderConceptMap(spec, integratedTheme, dimensions);
-            break;
-        case 'mindmap':
-            renderMindMap(spec, integratedTheme, dimensions);
-            break;
-
-        case 'flowchart':
-            renderFlowchart(spec, integratedTheme, dimensions);
-            break;
-
-        case 'timeline':
-            renderTimeline(spec, integratedTheme, dimensions);
-            break;
-        case 'bridge_map':
-            renderBridgeMap(spec, integratedTheme, dimensions, 'd3-container');
-            break;
-        case 'brace_map':
-            console.log('Rendering brace map with spec:', spec);
-            try {
-                renderBraceMap(spec, integratedTheme, dimensions);
-                console.log('Brace map rendering completed');
-            } catch (error) {
-                console.error('Error rendering brace map:', error);
-                d3.select('#d3-container').append('div')
-                    .style('color', 'red')
-                    .text(`Error rendering brace map: ${error.message}`);
-            }
-            break;
-        case 'flow_map':
-            renderFlowMap(spec, integratedTheme, dimensions);
-            break;
-        case 'multi_flow_map':
-            renderMultiFlowMap(spec, integratedTheme, dimensions);
-            break;
-
-
-        default:
-            console.error(`Unknown graph type: ${type}`);
-            d3.select('#d3-container').append('div')
-                .style('color', 'red')
-                .text(`Error: Unknown graph type '${type}'`);
-    }
-}
+// Note: renderGraph function has been moved to renderer-dispatcher.js
+// to avoid dependency issues with individual renderer modules
 
 // --- Export utilities for module system ---
 if (typeof window !== 'undefined') {
@@ -312,12 +229,22 @@ if (typeof window !== 'undefined') {
         getThemeDefaults,
         createSVG,
         centerContent,
-        wrapText,
-        renderGraph
+        wrapText
     };
     
-    // Also make renderGraph available globally for backward compatibility
-    window.renderGraph = renderGraph;
+    // CRITICAL FIX: Also expose functions globally for backward compatibility
+    // This prevents the "Identifier 'addWatermark' has already been declared" error
+    if (typeof window.addWatermark === 'undefined') {
+        window.addWatermark = addWatermark;
+    }
+    if (typeof window.getWatermarkText === 'undefined') {
+        window.getWatermarkText = getWatermarkText;
+    }
+    if (typeof window.getTextRadius === 'undefined') {
+        window.getTextRadius = getTextRadius;
+    }
+    
+    console.log('✅ Shared utilities exported to global scope');
 } else if (typeof module !== 'undefined' && module.exports) {
     // Node.js environment
     module.exports = {
@@ -330,7 +257,6 @@ if (typeof window !== 'undefined') {
         getThemeDefaults,
         createSVG,
         centerContent,
-        wrapText,
-        renderGraph
+        wrapText
     };
 }

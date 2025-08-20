@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Tree Renderer Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #d3-container { border: 1px solid #ccc; min-height: 400px; }
+        button { margin: 10px; padding: 10px; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Simple Tree Renderer Test</h1>
+    <button onclick="testOldRenderers()">Test Old d3-renderers.js</button>
+    <button onclick="testNewModular()">Test New Modular System</button>
+    <div id="result"></div>
+    <div id="d3-container"></div>
+
+    <!-- Load D3.js first -->
+    <script src="/static/js/d3.min.js"></script>
+    
+    <script>
+        const spec = {
+            topic: "Animals",
+            children: [
+                {
+                    label: "Mammals",
+                    children: [
+                        { label: "Dogs" },
+                        { label: "Cats" },
+                        { label: "Horses" }
+                    ]
+                },
+                {
+                    label: "Birds", 
+                    children: [
+                        { label: "Eagles" },
+                        { label: "Owls" }
+                    ]
+                }
+            ]
+        };
+        
+        function testOldRenderers() {
+            document.getElementById('result').innerHTML = '<p>Testing old d3-renderers.js...</p>';
+            
+            // Load old d3-renderers.js
+            const script = document.createElement('script');
+            script.src = '/static/js/d3-renderers.js';
+            script.onload = function() {
+                console.log('Old d3-renderers.js loaded');
+                console.log('renderGraph available:', typeof renderGraph !== 'undefined');
+                console.log('renderTreeMap available:', typeof renderTreeMap !== 'undefined');
+                
+                if (typeof renderGraph === 'function') {
+                    try {
+                        renderGraph('tree_map', spec);
+                        document.getElementById('result').innerHTML = '<p style="color: green;">✅ Old d3-renderers.js works!</p>';
+                    } catch (error) {
+                        document.getElementById('result').innerHTML = '<p class="error">❌ Old d3-renderers.js error: ' + error.message + '</p>';
+                    }
+                } else {
+                    document.getElementById('result').innerHTML = '<p class="error">❌ renderGraph not found in old d3-renderers.js</p>';
+                }
+            };
+            script.onerror = function() {
+                document.getElementById('result').innerHTML = '<p class="error">❌ Failed to load old d3-renderers.js</p>';
+            };
+            document.head.appendChild(script);
+        }
+        
+        function testNewModular() {
+            document.getElementById('result').innerHTML = '<p>Testing new modular system...</p>';
+            
+            // Clear old scripts first
+            d3.select('#d3-container').html('');
+            
+            // Load modular system in order
+            const scripts = [
+                '/static/js/renderers/shared-utilities.js',
+                '/static/js/renderers/tree-renderer.js', 
+                '/static/js/renderers/renderer-dispatcher.js'
+            ];
+            
+            let loaded = 0;
+            
+            function loadNext() {
+                if (loaded >= scripts.length) {
+                    // All loaded, test
+                    console.log('All modular scripts loaded');
+                    console.log('renderGraph available:', typeof renderGraph !== 'undefined');
+                    console.log('renderTreeMap available:', typeof renderTreeMap !== 'undefined');
+                    
+                    if (typeof renderGraph === 'function') {
+                        try {
+                            renderGraph('tree_map', spec);
+                            document.getElementById('result').innerHTML = '<p style="color: green;">✅ New modular system works!</p>';
+                        } catch (error) {
+                            document.getElementById('result').innerHTML = '<p class="error">❌ New modular system error: ' + error.message + '</p>';
+                            console.error('Modular system error:', error);
+                        }
+                    } else {
+                        document.getElementById('result').innerHTML = '<p class="error">❌ renderGraph not found in new modular system</p>';
+                    }
+                    return;
+                }
+                
+                const script = document.createElement('script');
+                script.src = scripts[loaded];
+                script.onload = function() {
+                    console.log('Loaded:', scripts[loaded]);
+                    loaded++;
+                    loadNext();
+                };
+                script.onerror = function() {
+                    document.getElementById('result').innerHTML = '<p class="error">❌ Failed to load: ' + scripts[loaded] + '</p>';
+                };
+                document.head.appendChild(script);
+            }
+            
+            loadNext();
+        }
+    </script>
+</body>
+</html>

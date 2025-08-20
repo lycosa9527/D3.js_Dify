@@ -32,21 +32,21 @@ class ModularJavaScriptManager:
         
         # Graph type to renderer module mapping
         self.graph_type_to_modules = {
-            'mindmap': ['shared-utilities', 'mind-map-renderer'],
-            'concept_map': ['shared-utilities', 'concept-map-renderer'],
-            'conceptmap': ['shared-utilities', 'concept-map-renderer'],
-            'bubble_map': ['shared-utilities', 'bubble-map-renderer'],
-            'double_bubble_map': ['shared-utilities', 'bubble-map-renderer'],
-            'circle_map': ['shared-utilities', 'bubble-map-renderer'],
-            'tree_map': ['shared-utilities', 'tree-renderer'],
+            'mindmap': ['shared-utilities', 'mind-map-renderer', 'renderer-dispatcher'],
+            'concept_map': ['shared-utilities', 'concept-map-renderer', 'renderer-dispatcher'],
+            'conceptmap': ['shared-utilities', 'concept-map-renderer', 'renderer-dispatcher'],
+            'bubble_map': ['shared-utilities', 'bubble-map-renderer', 'renderer-dispatcher'],
+            'double_bubble_map': ['shared-utilities', 'bubble-map-renderer', 'renderer-dispatcher'],
+            'circle_map': ['shared-utilities', 'bubble-map-renderer', 'renderer-dispatcher'],
+            'tree_map': ['shared-utilities', 'tree-renderer', 'renderer-dispatcher'],
 
-            'flowchart': ['shared-utilities', 'flow-renderer'],
-            'flow_map': ['shared-utilities', 'flow-renderer'],
-            'multi_flow_map': ['shared-utilities', 'flow-renderer'],
-            'bridge_map': ['shared-utilities', 'flow-renderer'],
+            'flowchart': ['shared-utilities', 'flow-renderer', 'renderer-dispatcher'],
+            'flow_map': ['shared-utilities', 'flow-renderer', 'renderer-dispatcher'],
+            'multi_flow_map': ['shared-utilities', 'flow-renderer', 'renderer-dispatcher'],
+            'bridge_map': ['shared-utilities', 'flow-renderer', 'renderer-dispatcher'],
 
-            'timeline': ['shared-utilities', 'timeline-renderer'],
-            'brace_map': ['shared-utilities', 'brace-renderer'],
+        
+            'brace_map': ['shared-utilities', 'brace-renderer', 'renderer-dispatcher'],
 
         }
         
@@ -58,10 +58,11 @@ class ModularJavaScriptManager:
             'bubble-map-renderer': 'bubble-map-renderer.js',
             'tree-renderer': 'tree-renderer.js',
             'flow-renderer': 'flow-renderer.js',
+            'renderer-dispatcher': 'renderer-dispatcher.js',
 
-            'timeline-renderer': 'timeline-renderer.js',
+        
             'brace-renderer': 'brace-renderer.js',
-            'semantic-renderer': 'semantic-renderer.js'
+        
         }
         
         # Cache for loaded modules
@@ -80,13 +81,6 @@ class ModularJavaScriptManager:
     def _load_core_modules(self):
         """Load core modules that are always needed."""
         try:
-            # Load shared utilities
-            shared_utils_path = self.renderers_path / 'shared-utilities.js'
-            if shared_utils_path.exists():
-                with open(shared_utils_path, 'r', encoding='utf-8') as f:
-                    self._module_cache['shared-utilities'] = f.read()
-                logger.info("Shared utilities loaded into cache")
-            
             # Load style manager (from parent directory)
             style_manager_path = self.base_path / 'style-manager.js'
             if style_manager_path.exists():
@@ -100,6 +94,9 @@ class ModularJavaScriptManager:
                 with open(theme_config_path, 'r', encoding='utf-8') as f:
                     self._module_cache['theme-config'] = f.read()
                 logger.info("Theme config loaded into cache")
+                
+            # REMOVED: shared-utilities is NOT a core module - it contains renderer functions
+            # that should be loaded on-demand to prevent conflicts
                 
         except Exception as e:
             logger.error(f"Failed to load core modules: {e}")
@@ -145,7 +142,13 @@ class ModularJavaScriptManager:
             List[str]: List of required module names
         """
         normalized_type = self.normalize_graph_type(graph_type)
-        return self.graph_type_to_modules.get(normalized_type, ['shared-utilities'])
+        base_modules = self.graph_type_to_modules.get(normalized_type, ['shared-utilities'])
+        
+        # Always add renderer-dispatcher LAST so it can check if individual renderers exist
+        if 'renderer-dispatcher' not in base_modules:
+            base_modules.append('renderer-dispatcher')
+        
+        return base_modules
     
     def load_module(self, module_name: str) -> str:
         """
@@ -191,15 +194,15 @@ class ModularJavaScriptManager:
             logger.error(f"Failed to load module {module_name}: {e}")
             return ""
     
-    def get_javascript_for_graph_type(self, graph_type: str) -> Tuple[str, Dict]:
+    def get_javascript_for_graph_type(self, graph_type: str) -> Tuple[Dict[str, str], Dict]:
         """
-        Get the complete JavaScript content for a specific graph type.
+        Get the JavaScript modules for a specific graph type, returned separately.
         
         Args:
             graph_type: The graph type to get JavaScript for
             
         Returns:
-            Tuple[str, Dict]: (Combined JavaScript content, Performance stats)
+            Tuple[Dict[str, str], Dict]: (Module contents dict, Performance stats)
         """
         self._cache_stats['total_requests'] += 1
         
@@ -213,21 +216,31 @@ class ModularJavaScriptManager:
         # Get required modules
         required_modules = self.get_required_modules(graph_type)
         
-        # Always include core modules
-        all_modules = ['theme-config', 'style-manager'] + required_modules
+        # Build module list in correct order:
+        # 1. Core modules (theme-config, style-manager)
+        # 2. Shared utilities (must come before renderers)
+        # 3. Specific renderer modules
+        # 4. Renderer dispatcher (must come last)
+        all_modules = ['theme-config', 'style-manager']
         
-        # Load all modules
-        module_contents = []
+        # Add shared-utilities if it's in required modules (it should be)
+        if 'shared-utilities' in required_modules:
+            all_modules.append('shared-utilities')
+            # Remove it from required_modules to avoid duplication
+            required_modules = [m for m in required_modules if m != 'shared-utilities']
+        
+        # Add remaining renderer modules
+        all_modules.extend(required_modules)
+        
+        # Load all modules separately
+        module_contents = {}
         total_size = 0
         
         for module_name in all_modules:
             content = self.load_module(module_name)
             if content:
-                module_contents.append(f"// === {module_name.upper()} MODULE ===\n{content}")
+                module_contents[module_name] = content
                 total_size += len(content)
-        
-        # Combine all content
-        combined_js = "\n\n".join(module_contents)
         
         # Calculate savings compared to full d3-renderers.js
         full_renderer_size = 218174  # Size of full d3-renderers.js (updated with renderGraph extraction)
@@ -251,7 +264,7 @@ class ModularJavaScriptManager:
         
         logger.info(f"Generated JavaScript for {graph_type}: {stats['total_size_kb']}KB")
         
-        return combined_js, stats
+        return module_contents, stats
     
     def get_cache_statistics(self) -> Dict:
         """
@@ -294,25 +307,31 @@ class ModularJavaScriptManager:
     
     def preload_common_modules(self):
         """Preload commonly used renderer modules."""
-        common_types = ['mindmap', 'concept_map', 'bubble_map', 'tree_map']
+        # DISABLED: Preloading all renderers causes conflicts
+        # Only load core modules, renderers will be loaded on-demand
+        logger.info("Preloading disabled - renderers loaded on-demand to prevent conflicts")
+        return
         
-        for graph_type in common_types:
-            try:
-                modules = self.get_required_modules(graph_type)
-                for module in modules:
-                    if module not in self._module_cache:
-                        self.load_module(module)
-                logger.info(f"Preloaded modules for {graph_type}")
-            except Exception as e:
-                logger.warning(f"Failed to preload modules for {graph_type}: {e}")
-        
-        logger.info("Common modules preloaded successfully")
+        # OLD CODE (DISABLED):
+        # common_types = ['mindmap', 'concept_map', 'bubble_map', 'tree_map']
+        # 
+        # for graph_type in common_types:
+        #     try:
+        #         modules = self.get_required_modules(graph_type)
+        #         for module in modules:
+        #             if module not in self._module_cache:
+        #                 self.load_module(module)
+        #         logger.info(f"Preloaded modules for {graph_type}")
+        #     except Exception as e:
+        #         logger.warning(f"Failed to preload modules for {graph_type}: {e}")
+        # 
+        # logger.info("Common modules preloaded successfully")
 
 
 # Global instance for use throughout the application
 modular_js_manager = ModularJavaScriptManager()
 
-def get_javascript_for_graph_type(graph_type: str) -> Tuple[str, Dict]:
+def get_javascript_for_graph_type(graph_type: str) -> Tuple[Dict[str, str], Dict]:
     """
     Convenience function to get JavaScript for a graph type.
     
@@ -320,7 +339,7 @@ def get_javascript_for_graph_type(graph_type: str) -> Tuple[str, Dict]:
         graph_type: The graph type to get JavaScript for
         
     Returns:
-        Tuple[str, Dict]: (Combined JavaScript content, Performance stats)
+        Tuple[Dict[str, str], Dict]: (Module contents dict, Performance stats)
     """
     return modular_js_manager.get_javascript_for_graph_type(graph_type)
 

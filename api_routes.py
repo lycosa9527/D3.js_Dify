@@ -489,53 +489,40 @@ def generate_png():
                 # Import the modular cache manager (Python wrapper)
                 from static.js.modular_cache_python import get_javascript_for_graph_type
                 
-                # Get graph-type-specific JavaScript content with performance stats
-                combined_js, modular_stats = get_javascript_for_graph_type(graph_type)
+                # Get graph-type-specific JavaScript modules with performance stats
+                module_contents, modular_stats = get_javascript_for_graph_type(graph_type)
                 
                 logger.info(f"Modular JavaScript loaded for {graph_type}: {modular_stats['module_names']} ({modular_stats['total_size_kb']}KB)")
                 
-                # Split the combined JS for compatibility with existing HTML template
-                import re
+                # Extract modules directly - no more regex parsing!
+                theme_config = module_contents.get('theme-config', '')
+                style_manager = module_contents.get('style-manager', '')
                 
-                # Use regex to split by module headers and extract content
-                theme_match = re.search(r'// === THEME-CONFIG MODULE ===\n(.*?)(?=// === \w+)', combined_js, re.DOTALL)
-                style_match = re.search(r'// === STYLE-MANAGER MODULE ===\n(.*?)(?=// === \w+)', combined_js, re.DOTALL)
-                renderer_match = re.search(r'// === (?:SHARED-UTILITIES|MIND-MAP-RENDERER|CONCEPT-MAP-RENDERER|BUBBLE-MAP-RENDERER|TREE-RENDERER|FLOW-RENDERER|VENN-RENDERER|TIMELINE-RENDERER|BRACE-RENDERER|SEMANTIC-RENDERER) MODULE ===\n(.*?)$', combined_js, re.DOTALL)
+                # Generate separate script tags for each module instead of concatenating
+                module_script_tags = []
+                for module_name, content in module_contents.items():
+                    if module_name not in ['theme-config', 'style-manager']:
+                        # Add cache-busting to prevent browser from loading cached renderers
+                        cache_buster = f"?v={int(time.time())}"
+                        module_script_tags.append(f'<script data-module="{module_name}" data-cache-buster="{cache_buster}">{content}</script>')
                 
-                theme_config = theme_match.group(1).strip() if theme_match else ""
-                style_manager = style_match.group(1).strip() if style_match else ""
-                combined_renderers = renderer_match.group(1).strip() if renderer_match else ""
+                renderer_scripts = '\n            '.join(module_script_tags) if module_script_tags else ""
                 
-                # If regex fails, fallback to simple approach
-                if not theme_config or not style_manager or not combined_renderers:
-                    logger.warning("Regex splitting failed, using fallback splitting method")
-                    # Split by double newlines and filter by content
-                    sections = combined_js.split('\n\n')
-                    theme_config = ""
-                    style_manager = ""
-                    combined_renderers = ""
-                    
-                    for section in sections:
-                        if 'THEME_CONFIG' in section or 'getD3Theme' in section:
-                            theme_config += section + "\n\n"
-                        elif 'styleManager' in section or 'getTheme' in section:
-                            style_manager += section + "\n\n"
-                        elif any(func in section for func in ['renderMindMap', 'renderConceptMap', 'drawNode', 'createSimulation']):
-                            combined_renderers += section + "\n\n"
+                # Log what modules are being loaded for debugging
+                logger.info(f"Loading modules for {graph_type}: {[name for name in module_contents.keys() if name not in ['theme-config', 'style-manager']]}")
+                logger.info(f"Generated {len(module_script_tags)} script tags")
+                
+                # Debug: Log the actual script content being generated
+                for i, script_tag in enumerate(module_script_tags):
+                    logger.info(f"Script tag {i+1}: {script_tag[:100]}...")  # First 100 chars
+                
+                logger.info(f"Total HTML size will be approximately: {len(theme_config) + len(style_manager) + sum(len(tag) for tag in module_script_tags)} chars")
                 
             except Exception as e:
                 logger.error(f"Failed to load modular JavaScript for {graph_type}: {e}")
-                # Fallback to lazy cache if modular loading fails
-                try:
-                    logger.warning("Falling back to lazy cache manager...")
-                    from static.js.lazy_cache_manager import get_theme_config, get_style_manager, get_d3_renderers
-                    combined_renderers = get_d3_renderers()
-                    theme_config = get_theme_config()
-                    style_manager = get_style_manager()
-                    logger.warning(f"Fallback: Using full d3-renderers.js ({round(len(combined_renderers)/1024, 1)}KB)")
-                except Exception as fallback_error:
-                    logger.error(f"Fallback also failed: {fallback_error}")
-                    raise
+                # NO FALLBACK - if modular system fails, show error
+                logger.error(f"Modular system failed for {graph_type}, no fallback available")
+                raise ValueError(f"Failed to load required JavaScript modules for {graph_type}")
             
             # Log spec data summary for debugging
             if isinstance(spec, dict):
@@ -651,14 +638,31 @@ def generate_png():
             {style_manager}
             </script>
             
-            <!-- Modular D3 Renderers (Only Required for {graph_type}) -->
-            <script>
-            {combined_renderers}
-            </script>
+            <!-- Modular D3 Renderers (Loaded in dependency order) -->
+            {renderer_scripts}
             
             <!-- Main Rendering Logic -->
             <script>
             console.log("Page loaded, waiting for D3.js...");
+            console.log("Debug: Checking module availability...");
+            
+            // Debug: Check what modules are loaded
+            setTimeout(() => {{
+                console.log("Debug: Module availability check:");
+                console.log("  - renderTreeMap:", typeof renderTreeMap);
+                console.log("  - TreeRenderer:", typeof TreeRenderer);
+                console.log("  - MindGraphUtils:", typeof MindGraphUtils);
+                console.log("  - addWatermark:", typeof addWatermark);
+                console.log("  - styleManager:", typeof styleManager);
+                console.log("  - renderGraph:", typeof renderGraph);
+                
+                if (window.TreeRenderer) {{
+                    console.log("  - TreeRenderer.renderTreeMap:", typeof window.TreeRenderer.renderTreeMap);
+                }}
+                if (window.MindGraphUtils) {{
+                    console.log("  - MindGraphUtils.addWatermark:", typeof window.MindGraphUtils.addWatermark);
+                }}
+            }}, 1000);
             
             // Wait for D3.js to load
             function waitForD3() {{
@@ -779,12 +783,45 @@ def generate_png():
                 # Log console messages and errors (consolidated)
                 if console_messages:
                     logger.info(f"Browser console messages: {len(console_messages)}")
+                    # Log the actual console messages for debugging
+                    for i, msg in enumerate(console_messages[-10:]):  # Last 10 messages
+                        logger.info(f"Console {i+1}: {msg}")
                 if page_errors:
                     logger.error(f"Browser errors: {len(page_errors)}")
+                    for i, error in enumerate(page_errors):
+                        logger.error(f"Browser Error {i+1}: {error}")
                 
                 # Wait for rendering to complete
                 logger.info("Waiting for rendering to complete...")
                 await asyncio.sleep(4.0)  # Combined wait time
+                
+                # Check what functions are actually available in the browser
+                try:
+                    function_check = await page.evaluate("""
+                        () => {
+                            const functions = {};
+                            functions.renderTreeMap = typeof renderTreeMap;
+                            functions.TreeRenderer = typeof TreeRenderer;
+                            functions.MindGraphUtils = typeof MindGraphUtils;
+                            functions.addWatermark = typeof addWatermark;
+                            functions.styleManager = typeof styleManager;
+                            functions.d3 = typeof d3;
+                            functions.renderGraph = typeof renderGraph;
+                            
+                            // Check if specific objects exist
+                            if (window.TreeRenderer) {
+                                functions.TreeRenderer_renderTreeMap = typeof window.TreeRenderer.renderTreeMap;
+                            }
+                            if (window.MindGraphUtils) {
+                                functions.MindGraphUtils_addWatermark = typeof window.MindGraphUtils.addWatermark;
+                            }
+                            
+                            return functions;
+                        }
+                    """)
+                    logger.info(f"Function availability check: {function_check}")
+                except Exception as e:
+                    logger.error(f"Failed to check function availability: {e}")
                 
                 # Wait for SVG element to be created with timeout
                 try:

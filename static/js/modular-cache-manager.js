@@ -23,29 +23,30 @@ class ModularCacheManager extends LazyJavaScriptCache {
             'bubble-map-renderer': '/static/js/renderers/bubble-map-renderer.js',
             'tree-renderer': '/static/js/renderers/tree-renderer.js',
             'flow-renderer': '/static/js/renderers/flow-renderer.js',
-            'venn-renderer': '/static/js/renderers/venn-renderer.js',
-            'timeline-renderer': '/static/js/renderers/timeline-renderer.js',
+            'renderer-dispatcher': '/static/js/renderers/renderer-dispatcher.js',
+
+        
             'brace-renderer': '/static/js/renderers/brace-renderer.js',
-            'semantic-renderer': '/static/js/renderers/semantic-renderer.js'
+
         };
         
         // Graph type to renderer mapping
         this.graphTypeToRenderer = {
-            'mindmap': ['shared-utilities', 'mind-map-renderer'],
-            'concept_map': ['shared-utilities', 'concept-map-renderer'],
-            'conceptmap': ['shared-utilities', 'concept-map-renderer'],
-            'bubble_map': ['shared-utilities', 'bubble-map-renderer'],
-            'double_bubble_map': ['shared-utilities', 'bubble-map-renderer'],
-            'circle_map': ['shared-utilities', 'bubble-map-renderer'],
-            'tree_map': ['shared-utilities', 'tree-renderer'],
+            'mindmap': ['shared-utilities', 'mind-map-renderer', 'renderer-dispatcher'],
+            'concept_map': ['shared-utilities', 'concept-map-renderer', 'renderer-dispatcher'],
+            'conceptmap': ['shared-utilities', 'concept-map-renderer', 'renderer-dispatcher'],
+            'bubble_map': ['shared-utilities', 'bubble-map-renderer', 'renderer-dispatcher'],
+            'double_bubble_map': ['shared-utilities', 'bubble-map-renderer', 'renderer-dispatcher'],
+            'circle_map': ['shared-utilities', 'bubble-map-renderer', 'renderer-dispatcher'],
+            'tree_map': ['shared-utilities', 'tree-renderer', 'renderer-dispatcher'],
 
-            'flowchart': ['shared-utilities', 'flow-renderer'],
-            'flow_map': ['shared-utilities', 'flow-renderer'],
-            'multi_flow_map': ['shared-utilities', 'flow-renderer'],
-            'bridge_map': ['shared-utilities', 'flow-renderer'],
+            'flowchart': ['shared-utilities', 'flow-renderer', 'renderer-dispatcher'],
+            'flow_map': ['shared-utilities', 'flow-renderer', 'renderer-dispatcher'],
+            'multi_flow_map': ['shared-utilities', 'flow-renderer', 'renderer-dispatcher'],
+            'bridge_map': ['shared-utilities', 'flow-renderer', 'renderer-dispatcher'],
 
-            'timeline': ['shared-utilities', 'timeline-renderer'],
-            'brace_map': ['shared-utilities', 'brace-renderer'],
+        
+            'brace_map': ['shared-utilities', 'brace-renderer', 'renderer-dispatcher'],
 
         };
         

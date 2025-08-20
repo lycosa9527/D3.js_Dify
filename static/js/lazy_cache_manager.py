@@ -45,16 +45,16 @@ class LazyJavaScriptCache:
         # Cache storage with metadata
         self._cache: Dict[str, Dict] = {
             'theme_config': {'content': None, 'loaded_at': None, 'size_bytes': 0, 'access_count': 0},
-            'style_manager': {'content': None, 'loaded_at': None, 'size_bytes': 0, 'access_count': 0},
-            'd3_renderers': {'content': None, 'loaded_at': None, 'size_bytes': 0, 'access_count': 0}
+            'style_manager': {'content': None, 'loaded_at': None, 'size_bytes': 0, 'access_count': 0}
         }
         
         # File paths
         self._js_dir = Path(__file__).parent
-        self._file_paths = {
+        # Core JavaScript files
+        self._js_files = {
             'theme_config': self._js_dir / 'theme-config.js',
             'style_manager': self._js_dir / 'style-manager.js',
-            'd3_renderers': self._js_dir / 'd3-renderers.js'
+            # REMOVED: 'd3_renderers': self._js_dir / 'd3-renderers.js' - No longer needed
         }
         
         # Performance tracking
@@ -87,12 +87,12 @@ class LazyJavaScriptCache:
             bool: True if content is valid, False otherwise
         """
         if not content or len(content.strip()) < 10:
-            logger.error(f"❌ Invalid content for {file_key}: too short or empty")
+            logger.error(f"Invalid content for {file_key}: too short or empty")
             return False
         
         # Basic JavaScript validation (check for common patterns)
         if not any(keyword in content for keyword in ['function', 'var', 'let', 'const', '//', '/*']):
-            logger.warning(f"⚠️ Content for {file_key} may not be valid JavaScript")
+            logger.warning(f"Content for {file_key} may not be valid JavaScript")
             return False
         
         return True
@@ -102,11 +102,11 @@ class LazyJavaScriptCache:
         try:
             # Preload theme config as it's small and always needed
             self._load_file('theme_config')
-            logger.info("✅ Critical files preloaded for optimal performance")
+            logger.info("Critical files preloaded for optimal performance")
         except Exception as e:
-            logger.warning(f"⚠️ Critical file preloading failed: {e}")
+            logger.warning(f"Critical file preloading failed: {e}")
             # Don't fail initialization - allow lazy loading to handle it
-            logger.info("ℹ️ Continuing with lazy loading strategy")
+            logger.info("Continuing with lazy loading strategy")
     
     def _load_file(self, file_key: str) -> str:
         """
@@ -122,10 +122,10 @@ class LazyJavaScriptCache:
             FileNotFoundError: If file doesn't exist
             IOError: If file can't be read
         """
-        if file_key not in self._file_paths:
+        if file_key not in self._js_files:
             raise ValueError(f"Unknown file key: {file_key}")
         
-        file_path = self._file_paths[file_key]
+        file_path = self._js_files[file_key]
         if not file_path.exists():
             raise FileNotFoundError(f"JavaScript file not found: {file_path}")
         
@@ -161,7 +161,7 @@ class LazyJavaScriptCache:
             return content
             
         except Exception as e:
-            logger.error(f"❌ Failed to load {file_key}: {e}")
+            logger.error(f"Failed to load {file_key}: {e}")
             raise
     
     def _is_cache_valid(self, file_key: str) -> bool:
@@ -186,7 +186,7 @@ class LazyJavaScriptCache:
     
     def _cleanup_cache(self):
         """Clean up expired or least-used cache entries."""
-        logger.info("🧹 Performing cache cleanup...")
+        logger.info("Performing cache cleanup...")
         
         current_time = time.time()
         total_freed = 0
@@ -205,7 +205,7 @@ class LazyJavaScriptCache:
                     'access_count': 0
                 })
                 total_freed += freed_bytes
-                logger.info(f"🗑️ Expired cache entry: {file_key}")
+                logger.info(f"Expired cache entry: {file_key}")
             
             # Check if least used (access count < 2 and older than 30 minutes)
             elif (entry['access_count'] < 2 and 
@@ -218,12 +218,12 @@ class LazyJavaScriptCache:
                     'access_count': 0
                 })
                 total_freed += freed_bytes
-                logger.info(f"🗑️ Least-used cache entry: {file_key}")
+                logger.info(f"Least-used cache entry: {file_key}")
         
         if total_freed > 0:
             # Prevent memory usage from going negative
             self._stats['total_memory_usage'] = max(0, self._stats['total_memory_usage'] - total_freed)
-            logger.info(f"🧹 Cache cleanup freed {total_freed:,} bytes")
+            logger.info(f"Cache cleanup freed {total_freed:,} bytes")
         
         self._stats['last_cleanup'] = current_time
     
@@ -235,9 +235,8 @@ class LazyJavaScriptCache:
         """Get style manager JavaScript (lazy loaded)."""
         return self._get_cached_content('style_manager')
     
-    def get_d3_renderers(self) -> str:
-        """Get D3 renderers JavaScript (lazy loaded)."""
-        return self._get_cached_content('d3_renderers')
+    # REMOVED: get_d3_renderers function - no longer needed
+    # The modular system handles all renderer loading now
     
     def _get_cached_content(self, file_key: str) -> str:
         """
@@ -264,20 +263,20 @@ class LazyJavaScriptCache:
                 # Cache hit
                 self._stats['cache_hits'] += 1
                 cache_entry['access_count'] += 1
-                logger.debug(f"🎯 Cache hit: {file_key}")
+                logger.debug(f"Cache hit: {file_key}")
                 return cache_entry['content']
             
             # Cache miss - load the file
             self._stats['cache_misses'] += 1
-            logger.debug(f"💾 Cache miss: {file_key}, loading...")
+            logger.debug(f"Cache miss: {file_key}, loading...")
             
             try:
                 content = self._load_file(file_key)
                 return content
             except Exception as e:
-                logger.error(f"❌ Failed to load {file_key}: {e}")
+                logger.error(f"Failed to load {file_key}: {e}")
                 # Return empty content instead of crashing - graceful degradation
-                logger.warning(f"⚠️ Returning empty content for {file_key} due to load failure")
+                logger.warning(f"Returning empty content for {file_key} due to load failure")
                 return ""
     
     def get_cache_stats(self) -> Dict:
@@ -325,7 +324,7 @@ class LazyJavaScriptCache:
                 self._stats['cached_hit_rate'] = 0
                 self._stats['cached_average_load_time'] = 0
         except Exception as e:
-            logger.warning(f"⚠️ Failed to recalculate metrics: {e}")
+            logger.warning(f"Failed to recalculate metrics: {e}")
             # Set safe defaults
             self._stats['cached_hit_rate'] = 0
             self._stats['cached_average_load_time'] = 0
@@ -339,7 +338,7 @@ class LazyJavaScriptCache:
     def reload_cache(self):
         """Reload all cached files (useful for development)."""
         with self._lock:
-            logger.info("🔄 Reloading JavaScript cache...")
+            logger.info("Reloading JavaScript cache...")
             
             # Clear all cache entries
             for file_key in self._cache:
@@ -365,38 +364,15 @@ class LazyJavaScriptCache:
             # Preload critical files
             self._preload_critical_files()
             
-            logger.info("✅ JavaScript cache reloaded successfully")
+            logger.info("JavaScript cache reloaded successfully")
     
     def get_performance_summary(self) -> str:
         """Get a human-readable performance summary."""
         stats = self.get_cache_stats()
         
-        summary = f"""
-🚀 Lazy JavaScript Cache Performance Summary
-{'='*50}
-📊 Cache Statistics:
-   • Total Requests: {stats['total_requests']:,}
-   • Cache Hits: {stats['cache_hits']:,}
-   • Cache Misses: {stats['cache_misses']:,}
-   • Hit Rate: {stats['cache_hit_rate']:.1f}%
-
-⚡ Performance Metrics:
-   • Files Loaded: {stats['files_loaded']}
-   • Average Load Time: {stats['average_load_time']:.3f}s
-   • Memory Usage: {stats['memory_usage_mb']} MB / {stats['max_memory_mb']} MB
-
-💾 Cache Status:"""
-        
-        for file_key, status in stats['cache_status'].items():
-            if status['loaded']:
-                age = status['age_seconds']
-                age_str = f"{age:.0f}s" if age < 60 else f"{age/60:.1f}m"
-                summary += f"\n   • {file_key}: {status['size_bytes']:,} bytes, accessed {status['access_count']}x, age: {age_str}"
-            else:
-                summary += f"\n   • {file_key}: Not loaded"
-        
-        summary += f"\n\n🎯 Performance Impact: 90-95% improvement in file I/O performance"
-        summary += f"\n💡 Features: Lazy loading, intelligent caching, memory optimization"
+        summary = f"""Cache Status: {stats['total_requests']} requests, {stats['cache_hit_rate']:.1f}% hit rate
+Memory: {stats['memory_usage_mb']:.1f}MB / {stats['max_memory_mb']}MB
+Files: {stats['files_loaded']} loaded, avg time: {stats['average_load_time']:.3f}s"""
         
         return summary
 
@@ -413,9 +389,8 @@ def get_style_manager():
     """Get cached style manager JavaScript (lazy loaded)."""
     return lazy_js_cache.get_style_manager()
 
-def get_d3_renderers():
-    """Get cached D3 renderers JavaScript (lazy loaded)."""
-    return lazy_js_cache.get_d3_renderers()
+# REMOVED: get_d3_renderers function - no longer needed
+# The modular system handles all renderer loading now
 
 def get_cache_stats():
     """Get comprehensive cache statistics."""
