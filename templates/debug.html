@@ -76,6 +76,48 @@
             letter-spacing: 0.05em;
         }
 
+        /* Form Row Layout */
+        .form-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .language-selector {
+            flex-shrink: 0;
+            min-width: 200px;
+        }
+
+        .language-selector label {
+            display: block;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .language-selector .form-control {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            background: #fafbfc;
+            cursor: pointer;
+        }
+
+        .language-selector .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
         .form-control {
             width: 100%;
             padding: 1rem 1.25rem;
@@ -272,9 +314,19 @@
                 padding: 2rem 1.5rem;
             }
             
+            .form-row {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 1rem;
+            }
+            
+            .language-selector {
+                min-width: auto;
+            }
+            
             .btn {
                 width: 100%;
-                margin-top: 1rem;
+                margin-top: 0;
             }
         }
 
@@ -313,17 +365,19 @@
                     <textarea id="prompt" class="form-control" placeholder="Describe the diagram you want to create..."></textarea>
                 </div>
                 
-                <div class="form-group">
-                    <label for="language">Language</label>
-                    <select id="language" class="form-control">
-                        <option value="zh">中文 (Chinese)</option>
-                        <option value="en">English</option>
-                    </select>
+                <div class="form-row">
+                    <div class="language-selector">
+                        <label for="language">Language</label>
+                        <select id="language" class="form-control">
+                            <option value="zh">中文 (Chinese)</option>
+                            <option value="en">English</option>
+                        </select>
+                    </div>
+                    
+                    <button id="generateDiagramBtn" class="btn btn-primary">
+                        Generate Diagram
+                    </button>
                 </div>
-                
-                <button id="generateDiagramBtn" class="btn btn-primary">
-                    Generate Diagram
-                </button>
                 
                 <div id="infoMsg" class="status-message status-info"></div>
                 <div id="errorMsg" class="status-message status-error"></div>
