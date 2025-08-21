@@ -937,7 +937,8 @@ def generate_png():
                 await browser.close()
                 return png_bytes
         
-        # Get the current event loop instead of creating a new one
+        # Close the async function definition
+        # Now call the async function with proper event loop handling
         try:
             loop = asyncio.get_event_loop()
             if loop.is_closed():
