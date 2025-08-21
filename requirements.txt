@@ -1,5 +1,5 @@
 # MindGraph - AI-Powered Graph Generation Application
-# Version: 2.5.0 
+# Version: 2.5.3 
 # Requirements for Python 3.8+ (Tested with Python 3.13.5)
 # 
 # Core Features:
@@ -48,6 +48,7 @@ python-dotenv>=1.0.1
 # ============================================================================
 nest_asyncio>=1.6.0
 pyee>=13.0.0
+asgiref>=3.7.0
 
 # ============================================================================
 # BROWSER AUTOMATION (Required for Production - PNG generation)

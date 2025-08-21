@@ -5,98 +5,58 @@
 
 ## 🔥 **CRITICAL FIXES (60-80% Impact)**
 
-### **1. WSGI Deployment with Gunicorn + Browser Pool per Worker (Concurrency + Performance Combined)** 🆕 **NEW CRITICAL INFRASTRUCTURE**
-- **Problem**: Flask development server (single-threaded, NOT WSGI compliant) + browser startup overhead (5.0s per request), creating massive bottleneck for API usage
-- **Fix**: Deploy with Gunicorn (WSGI server) + Browser Pool per Worker for optimal concurrency and performance
-- **Why WSGI**: Production standard for Python web apps, enables concurrency, scalable architecture, industry best practice
-- **Impact**: 80-90% better concurrent request handling + 20.6% faster individual requests
-- **Time**: 2-3 hours (EASY implementation - just configuration, no code changes)
-- **Priority**: CRITICAL - Required for production API usage, enables concurrent request processing, makes Flask WSGI compliant
+### **1. Fix PNG Generation to Use Context Pooling (47.1% improvement)** 🔄 **PENDING**
+- **Problem**: PNG generation is slow because:
+  1. **No Context Pooling**: Creates new browser context for each request (23% slower)
+  2. **Unnecessary Waits**: Has 8 seconds of fixed delays that aren't needed (24.1% slower)
+- **Fix**: Make PNG generation use the same event loop as SVG generation, so it can use context pooling, and remove unnecessary waiting delays
+- **Why This is Needed**: According to Playwright best practices, BrowserContexts are tied to specific event loops and cannot be shared across different event loops.
+- **Impact**: 
+  - **Context Pooling**: Enable context pooling for PNG generation (23% improvement)
+  - **PNG Workflow**: Optimize rendering waits (24.1% improvement)
+  - **Combined**: 47.1% total improvement for PNG generation
+- **Time**: 6-7 hours (MEDIUM complexity - requires Flask async refactoring + workflow optimization)
+- **Priority**: HIGH - Enables context pooling for PNG generation + eliminates unnecessary waits
 - **Current Limitations**: 
-  - Flask development server = single-threaded, NOT production-ready
-  - Single Flask thread = 1 request blocks all others
-  - 10 concurrent requests = 9 wait in queue
-  - No production scalability possible
-  - 5.0s browser startup overhead on every request (3.0s startup + 1.0s HTML parsing + 1.0s JavaScript loading)
-- **Solution Architecture (Integrated Solution)**:
-  - **Gunicorn (WSGI Server)**: 4 worker processes handling requests independently
-  - **Browser Pool per Worker**: Each worker has its own pool of 3 browsers
-  - **Total Capacity**: 4 workers × 3 browsers = 12 concurrent PNG generations
-  - **Performance**: 20.6% faster per request + 80-90% better concurrency
-  - **WSGI Compliance**: Flask app becomes production-ready WSGI application
-- **Performance Data from Logs**:
-  - **Bridge Map**: 22.207s → 17.507s (**4.7s saved, 21.2% faster**)
-  - **Multi-Flow Map**: 19.111s → 14.411s (**4.7s saved, 24.6% faster**)
-  - **Brace Map**: 31.828s → 27.128s (**4.7s saved, 14.8% faster**)
-  - **Average Improvement**: **4.7s saved per request (94% browser overhead reduction)**
-- **Browser Overhead Breakdown**:
-  - Browser startup: 3.0s → 0.1s (saves 2.9s)
-  - HTML parsing: 1.0s → 0.1s (saves 0.9s)
-  - JavaScript loading: 1.0s → 0.1s (saves 0.9s)
-  - Memory allocation: 0.5s → 0.0s (saves 0.5s)
-  - Process creation: 0.5s → 0.0s (saves 0.5s)
+  - SVG generation: Uses context pooling in Flask event loop ✅
+  - PNG generation: Creates new event loop, context pooling fails ❌
+  - Event loop isolation prevents context reuse across boundaries
+  - Fresh contexts created for each PNG request (slower, no pooling benefits)
+  - PNG generation has 8s of unnecessary waiting time
+- **Solution Architecture**:
+  - **Make Flask Async**: Update Flask to handle async operations properly
+  - **Share Event Loop**: Make PNG generation use Flask's event loop instead of creating new ones
+  - **Enable Context Pooling**: PNG generation can now reuse browser contexts like SVG does
+  - **Remove Fixed Delays**: Replace unnecessary 8-second waits with smart detection
 - **Implementation Steps**:
-  1. **Install Gunicorn** (5 min): `pip install gunicorn`
-  2. **Create gunicorn.conf.py** (10 min): Basic worker configuration
-  3. **Create browser_pool.py** (30 min): Simple browser pool class
-  4. **Update api_routes.py** (15 min): Replace browser creation with pool usage
-  5. **Test & Deploy** (30 min): Verify concurrent request handling
-- **Code Structure**: Create gunicorn.conf.py and browser_pool.py with standard configurations
-- **Integration Changes**: Replace browser creation with pool usage in api_routes.py
-- **Deployment Configuration**: Use gunicorn with worker configuration for development and production, update Docker CMD
-- **Why This Solution is EASY**:
-  - ✅ **Gunicorn**: Just configuration file (no coding)
-  - ✅ **Browser Pool**: Simple class with basic methods
-  - ✅ **Integration**: Minimal changes to existing code
-  - ✅ **Patterns**: Well-established, documented approaches
-  - ✅ **Testing**: Easy to test incrementally
+  1. **Update Flask** (1 hour): Make Flask handle async operations
+  2. **Fix PNG Generation** (2 hours): Make it use Flask's event loop and context pool
+  3. **Remove Unnecessary Waits** (2 hours): Replace fixed delays with smart detection
+  4. **Test Everything** (1 hour): Make sure both SVG and PNG work with context pooling
 - **Expected Results**:
-  - **Concurrent Requests**: 1 → 4 requests (400% improvement)
-  - **Individual Performance**: 20.6% faster per request
-  - **Total Throughput**: 4 workers × 3 browsers = 12 concurrent PNG generations
-  - **Production Ready**: WSGI standard, scalable architecture
-- **ROI Analysis**: Enables production API usage, scales from 1 to 10+ concurrent requests
-- **Status**: 🔄 **PENDING** - Critical infrastructure requirement for API scalability
+  - **PNG Generation**: 47.1% faster (context pooling + no more unnecessary waits)
+  - **SVG Generation**: Same speed as before (context pooling already working)
+  - **Overall**: Both SVG and PNG now use context pooling efficiently
+- **Why This Solution is OPTIMAL**:
+  - ✅ **Big Performance Boost**: 47.1% faster PNG generation
+  - ✅ **Eliminates Waste**: Removes 8 seconds of unnecessary waiting
+  - ✅ **Follows Best Practices**: Uses Playwright's recommended approach
+  - ✅ **Production Ready**: Maintains all existing functionality
+- **Status**: 🔄 **PENDING** - Will fix PNG generation to use context pooling and remove unnecessary waits
 
-### **2. PNG Generation Workflow Optimization (24.1% improvement)**
-- **Problem**: Multiple sequential waits (3s + 2s + 2s + 1s = 8s total) in PNG generation
-- **Fix**: Replace fixed sleeps with intelligent waiting, parallel operations, and browser optimization
-- **Impact**: 24.1% faster PNG generation, reduces rendering time by 4.2-6.2s depending on diagram complexity
-- **Time**: 4-5 hours
-- **Priority**: HIGH - 8s of unnecessary waiting time identified
-- **Status**: 🔄 **PENDING** - Will implement event-driven detection later
-- **Specific Issues**:
-  - `await asyncio.sleep(3.0)` - 3s wait for initial rendering (work completes in 3s, no savings)
-  - `await asyncio.sleep(2.0)` - 2s wait for final rendering (work completes in 0.5s, 1.5s savings)
-  - `await asyncio.sleep(2.0)` - 2s wait for rendering completion (work completes in 0.1s, 1.9s savings)
-  - `await page.wait_for_timeout(1000)` - 1s wait for animations (work completes in 0.2s, 0.8s savings)
-- **Actual Performance Data from Logs**:
-  - **Mindmap (Complex)**: 9.530s → 3.330s (**6.2s saved, 65% improvement**)
-  - **Circle_Map (Simple)**: 9.500s → 5.300s (**4.2s saved, 44% improvement**)
-  - **Double_Bubble_Map (Medium)**: 9.611s → 5.411s (**4.2s saved, 44% improvement**)
-  - **Average Rendering Improvement**: **4.9s saved (52.5% faster rendering)**
-- **Total Time Impact**: 
-  - **Mindmap**: 27.6s → 21.4s (**22.5% faster overall**)
-  - **Circle_Map**: 16.0s → 11.8s (**26.3% faster overall**)
-  - **Double_Bubble_Map**: 17.9s → 13.7s (**23.5% faster overall**)
-- **Optimization Strategy**: Replace with event-driven waiting, parallel SVG detection, and intelligent timeout management
-- **Implementation Notes**: 
-  - SVG detection shows work completes in 3s, not 7s
-  - Rendering completion shows work finishes in 0.1s, not 2s
-  - Animation completion shows work settles in 0.2s, not 1s
-  - Event-driven detection will eliminate 4.2-6.2s of unnecessary waiting
+
 
 ---
 
 ## 🛠️ **HIGH PRIORITY FIXES (20-40% Impact)**
 
-### **4. Theme System Consolidation (30% improvement)**
+### **2. Theme System Consolidation (30% improvement)**
 - **Problem**: 4-layer theme merging (backend → style-manager → theme-config → spec)
 - **Fix**: Single standardized theme format with one resolver function
 - **Impact**: 30% faster theme resolution, eliminates confusion
 - **Time**: 6-8 hours
 
-### **5. Centralized Validation System**
+### **3. Centralized Validation System**
 - **Problem**: 200+ lines of duplicated validation code across renderers
 - **Fix**: Single validation registry with graph-specific validators
 - **Impact**: Consistent validation, eliminates duplication
@@ -106,25 +66,25 @@
 
 ## 📋 **MEDIUM PRIORITY FIXES (10-20% Impact)**
 
-### **6. Memory Leak Cleanup**
+### **4. Memory Leak Cleanup**
 - **Problem**: DOM elements accumulating in headless browser sessions
 - **Fix**: Resource cleanup manager with automatic cleanup callbacks
 - **Impact**: Stable long-running sessions, prevents memory bloat
 - **Time**: 3-4 hours
 
-### **7. Error Handling Standardization**
+### **5. Error Handling Standardization**
 - **Problem**: Mixed error strategies (graceful vs hard failure)
 - **Fix**: Consistent error classes with user-friendly messages
 - **Impact**: Better debugging, predictable behavior, security (XSS prevention)
 - **Time**: 2-3 hours
 
-### **8. JSON Schema Validation**
+### **6. JSON Schema Validation**
 - **Problem**: No deep structure validation, runtime errors slip through
 - **Fix**: Comprehensive schema validation for all graph types
 - **Impact**: Prevents 90% of runtime errors, early error detection
 - **Time**: 4-5 hours
 
-### **9. Performance Monitoring System**
+### **7. Performance Monitoring System**
 - **Problem**: No visibility into performance bottlenecks
 - **Fix**: Real-time monitoring with alerts for slow operations
 - **Impact**: Proactive optimization, identifies issues before users
@@ -134,20 +94,20 @@
 
 ## 🔧 **LOW PRIORITY FIXES (5-10% Impact)**
 
-### **10. Agent Workflow Optimization (15% improvement)**
+### **8. Agent Workflow Optimization (15% improvement)**
 - **Problem**: Multiple agent imports and conditional agent usage in PNG generation
 - **Fix**: Unified agent workflow with single entry point and lazy loading
 - **Impact**: 15% faster agent processing, cleaner code structure
 - **Time**: 3-4 hours
 - **Priority**: LOW - Eliminates conditional agent logic and import overhead
 
-### **11. Agent Import Optimization**
+### **9. Agent Import Optimization**
 - **Problem**: All agents loaded at startup even if unused
 - **Fix**: Lazy load agents only when specific graph type requested
 - **Impact**: 20-30% faster startup, reduced memory usage
 - **Time**: 1-2 hours
 
-### **12. D3.js Data URI Optimization (0.05% improvement + memory optimization)**
+### **10. D3.js Data URI Optimization (0.05% improvement + memory optimization)**
 - **Problem**: D3.js library (279KB) loaded from disk and embedded in HTML on every PNG request, causing 4.7x larger HTML payload
 - **Fix**: Convert D3.js to data URI at startup, use cached URI in all HTML generation
 - **Impact**: 0.05% faster HTML generation, eliminates repeated disk I/O, cleaner code, **78.6% smaller HTML size**
@@ -204,8 +164,7 @@
 ## 🎯 **IMPLEMENTATION ORDER**
 
 ### **Week 1: Critical Fixes**
-1. **WSGI Deployment with Gunicorn + Browser Pool per Worker (INTEGRATED)** (Day 1-2) - **Single Solution**
-2. PNG Generation Workflow Optimization (Day 3-4)
+1. **Single Event Loop Architecture for Context Pooling + PNG Workflow Optimization** (Day 1-3) - **Enable context pooling + optimize PNG waits (47.1% combined improvement)**
 
 ### **Week 2: High Priority**
 4. Theme System Consolidation (Day 1-2)
@@ -228,17 +187,24 @@
 
 | Fix | Current | After Fix | Improvement | Real Impact |
 |-----|---------|-----------|-------------|-------------|
-| **Gunicorn + Browser Pool (INTEGRATED)** | 1 request, 5.0s overhead | 4 requests, 0.3s overhead | **400% concurrency + 94% speed** | **Production API + 4.7s saved** |
-| **Backend Rendering** | 9.73s | 7.4s | 24% faster | **2.33s saved** |
+| **Single Event Loop Architecture + PNG Workflow Optimization** | PNG: No pooling + 8s waits | PNG: Context pooling + optimized waits | **47.1% faster PNG generation** | **Context pooling + 4.2-6.2s saved** |
 | **Theme Resolution** | 100% | 70% | 30% faster | **0.3s saved** |
 | **D3.js Data URI** | 0.068s | 0.018s | 74% faster | **0.05s saved** |
 | **Total Time** | 17.9s | 13.8s | **23% faster** | **4.1s saved** |
+
+**Current Status**: 
+- ✅ **WSGI + Browser Context Pool**: COMPLETED - Production API scalability enabled
+- 🔄 **Single Event Loop Architecture + PNG Workflow Optimization**: NEXT PRIORITY - Enable 47.1% improvement for PNG generation
+- 🔄 **Additional Optimizations**: Theme, D3.js, etc. for further improvements
+
+**Next Steps**: Implement Single Event Loop Architecture + PNG Workflow Optimization for maximum performance (47.1% improvement)
 
 **Combined Impact**: 
 - **23% total performance improvement** (from 17.9s to 13.8s per request)
 - **400% concurrent request handling** (from 1 to 4 simultaneous requests)
 - **94% browser overhead reduction** (from 5.0s to 0.3s per request)
-- **Production API scalability** enabled with **Option 1: Gunicorn + Browser Pool per Worker**
+- **Context pooling enabled for both SVG and PNG generation** (unified performance)
+- **Production API scalability** enabled with **WSGI + Browser Context Pool per Worker**
 
 ---
 
@@ -254,5 +220,5 @@
 
 ---
 
-*Last Updated: January 2025*  
-*Status: Clean & Organized - Ready for Implementation*
+*Last Updated: August 2025*  
+*Status: Updated with Single Event Loop Architecture - Ready for Implementation*
