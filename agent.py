@@ -17,13 +17,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 os.makedirs("logs", exist_ok=True)
+# Setup logging configuration
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler("logs/agent.log", encoding="utf-8")
+        logging.FileHandler(os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs", "agent.log"), encoding="utf-8")
     ]
 )
 logger = logging.getLogger(__name__)

@@ -10,6 +10,9 @@
 import multiprocessing
 import os
 
+# Get the directory where this config file is located
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # Server socket
 bind = "0.0.0.0:9527"  # Using default MindGraph API port
 backlog = 2048
@@ -27,10 +30,10 @@ timeout = 120  # 2 minutes for complex diagram generation
 keepalive = 2
 graceful_timeout = 30
 
-# Logging
+# Logging - Use absolute paths to avoid FileNotFoundError
 loglevel = "info"
-accesslog = "logs/gunicorn_access.log"
-errorlog = "logs/gunicorn_error.log"
+accesslog = os.path.join(BASE_DIR, "logs", "gunicorn_access.log")
+errorlog = os.path.join(BASE_DIR, "logs", "gunicorn_error.log")
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'
 
 # Process naming
@@ -38,7 +41,7 @@ proc_name = 'mindgraph_api'
 
 # Server mechanics
 daemon = False
-pidfile = 'logs/gunicorn.pid'
+pidfile = os.path.join(BASE_DIR, "logs", "gunicorn.pid")
 user = None
 group = None
 tmp_upload_dir = None

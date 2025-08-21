@@ -64,14 +64,14 @@ from pathlib import Path
 # Create logs directory for application logging
 os.makedirs("logs", exist_ok=True)
 
-# Configure logging with clean, professional output
+# Setup logging configuration
 logging.basicConfig(
-    level=logging.INFO,  # INFO level for clean console output
+    level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
     handlers=[
         logging.StreamHandler(),  # Console output
-        logging.FileHandler("logs/app.log", encoding="utf-8")  # File logging
+        logging.FileHandler(os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs", "app.log"), encoding="utf-8")  # File logging
     ]
 )
 logger = logging.getLogger(__name__)

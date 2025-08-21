@@ -36,6 +36,14 @@ def run_waitress():
         sys.exit(1)
     
     try:
+        # Ensure we're in the correct directory (where this script is located)
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        os.chdir(script_dir)
+        
+        # Ensure logs directory exists
+        os.makedirs("logs", exist_ok=True)
+        print(f"📁 Working directory: {os.getcwd()}")
+        
         from waitress import serve
         from app import app
         
@@ -70,6 +78,15 @@ def run_gunicorn():
         sys.exit(1)
     
     try:
+        # Ensure we're in the correct directory (where this script is located)
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        os.chdir(script_dir)
+        
+        # Ensure logs directory exists
+        os.makedirs("logs", exist_ok=True)
+        print(f"📁 Working directory: {os.getcwd()}")
+        print(f"📁 Logs directory: {os.path.join(os.getcwd(), 'logs')}")
+        
         # Use subprocess to run Gunicorn with configuration file
         cmd = [sys.executable, '-m', 'gunicorn', '--config', 'gunicorn.conf.py', 'app:app']
         print(f"🚀 Running: {' '.join(cmd)}")
