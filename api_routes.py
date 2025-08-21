@@ -806,21 +806,33 @@ def generate_png():
             </script>
             </body></html>
             '''
-            async with async_playwright() as p:
-                # Optimize browser for large HTML content
-                browser = await p.chromium.launch(
-                    headless=True,
-                    args=[
-                        '--no-sandbox',
-                        '--disable-dev-shm-usage',
-                        '--disable-gpu',
-                        '--disable-web-security',
-                        '--disable-features=VizDisplayCompositor',
-                        '--memory-pressure-off',
-                        '--max_old_space_size=4096'
-                    ]
-                )
-                page = await browser.new_page()
+            # Get browser context from pool for optimal performance
+            # According to Playwright best practices:
+            # - Each isolated operation should have its own browser context
+            # - Contexts cannot cross event loop boundaries
+            # - For PNG generation, create a fresh context each time
+            # - Reference: https://playwright.dev/docs/browser-contexts#isolation
+            
+            logger.info("DEBUG: Creating fresh browser context for PNG generation (following Playwright isolation principles)")
+            
+            # Create a fresh browser instance and context for this PNG generation
+            # This ensures proper isolation and event loop compatibility
+            from playwright.async_api import async_playwright
+            playwright = await async_playwright().start()
+            
+            browser = await playwright.chromium.launch()
+            context = await browser.new_context(
+                viewport={'width': 1920, 'height': 1080},
+                user_agent='MindGraph PNG Generator/1.0',
+                java_script_enabled=True,
+                ignore_https_errors=True
+            )
+            
+            logger.info(f"DEBUG: Fresh context created - type: {type(context)}, id: {id(context)}")
+            
+            try:
+                # Use the fresh context for PNG generation
+                page = await context.new_page()
                 
                 # Set timeout to 60 seconds for all content
                 page.set_default_timeout(60000)  # 60 seconds default
@@ -934,9 +946,28 @@ def generate_png():
                 await page.wait_for_timeout(1000)  # Wait for any animations to complete
                 
                 png_bytes = await element.screenshot(omit_background=False, timeout=60000)
-                await browser.close()
                 return png_bytes
+            finally:
+                # Clean up resources properly
+                logger.info("DEBUG: Cleaning up PNG generation resources")
+                try:
+                    if 'page' in locals():
+                        await page.close()
+                        logger.info("DEBUG: Page closed")
+                    if 'context' in locals():
+                        await context.close()
+                        logger.info("DEBUG: Context closed")
+                    if 'browser' in locals():
+                        await browser.close()
+                        logger.info("DEBUG: Browser closed")
+                    if 'playwright' in locals():
+                        await playwright.stop()
+                        logger.info("DEBUG: Playwright stopped")
+                except Exception as cleanup_error:
+                    logger.warning(f"DEBUG: Error during cleanup: {cleanup_error}")
         
+        # Create a new event loop for PNG generation
+        # Each PNG generation gets its own fresh browser context for proper isolation
         png_bytes = asyncio.run(render_svg_to_png(spec, graph_type))
         
         # Calculate rendering time
@@ -1065,6 +1096,18 @@ def get_timing_stats():
     }
     
     return jsonify(formatted_stats)
+
+@api.route('/browser_context_pool_stats', methods=['GET'])
+@handle_api_errors
+def get_browser_context_pool_stats():
+    """Get browser context pool performance statistics and health information."""
+    try:
+        from browser_pool import get_browser_context_pool_stats
+        stats = get_browser_context_pool_stats()
+        return jsonify(stats)
+    except Exception as e:
+        logger.error(f"Failed to get browser context pool stats: {e}")
+        return jsonify({'error': f'Failed to get browser context pool stats: {e}'}), 500
 
 @api.route('/clear_cache', methods=['POST'])
 def clear_cache():

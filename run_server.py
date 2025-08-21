@@ -1,0 +1,122 @@
+#!/usr/bin/env python3
+"""
+MindGraph Platform-Aware Server Launcher
+Automatically selects the appropriate WSGI server based on the platform:
+- Windows: Waitress (pure Python, Windows-compatible)
+- Linux/Unix: Gunicorn (production-grade, Unix-only)
+"""
+
+import os
+import sys
+import platform
+import subprocess
+import importlib.util
+
+def check_package_installed(package_name):
+    """Check if a package is installed"""
+    spec = importlib.util.find_spec(package_name)
+    return spec is not None
+
+def detect_platform():
+    """Detect the current platform"""
+    system = platform.system().lower()
+    if system == 'windows':
+        return 'windows'
+    elif system in ['linux', 'darwin']:  # Darwin is macOS
+        return 'unix'
+    else:
+        return 'unknown'
+
+def run_waitress():
+    """Run MindGraph with Waitress (Windows)"""
+    print("🟦 Starting MindGraph with Waitress (Windows environment)")
+    
+    if not check_package_installed('waitress'):
+        print("❌ Waitress not installed. Install with: pip install waitress>=3.0.0")
+        sys.exit(1)
+    
+    try:
+        from waitress import serve
+        from app import app
+        
+        # Load configuration
+        config_module = {}
+        with open('waitress.conf.py', 'r') as f:
+            exec(f.read(), config_module)
+        
+        print(f"🚀 MindGraph starting on http://{config_module['host']}:{config_module['port']}")
+        print(f"📋 Configuration: {config_module['threads']} threads, timeout: {config_module['channel_timeout']}s")
+        
+        serve(
+            app, 
+            host=config_module['host'], 
+            port=config_module['port'],
+            threads=config_module['threads'],
+            cleanup_interval=config_module['cleanup_interval'],
+            channel_timeout=config_module['channel_timeout'],
+            send_bytes=config_module['send_bytes'],
+            recv_bytes=config_module['recv_bytes']
+        )
+    except Exception as e:
+        print(f"❌ Failed to start Waitress: {e}")
+        sys.exit(1)
+
+def run_gunicorn():
+    """Run MindGraph with Gunicorn (Linux/Unix)"""
+    print("🟩 Starting MindGraph with Gunicorn (Unix environment)")
+    
+    if not check_package_installed('gunicorn'):
+        print("❌ Gunicorn not installed. Install with: pip install gunicorn>=21.2.0")
+        sys.exit(1)
+    
+    try:
+        # Use subprocess to run Gunicorn with configuration file
+        cmd = [sys.executable, '-m', 'gunicorn', '--config', 'gunicorn.conf.py', 'app:app']
+        print(f"🚀 Running: {' '.join(cmd)}")
+        subprocess.run(cmd)
+    except Exception as e:
+        print(f"❌ Failed to start Gunicorn: {e}")
+        sys.exit(1)
+
+def run_flask_dev():
+    """Fallback: Run Flask development server"""
+    print("🟨 Starting MindGraph with Flask development server (fallback)")
+    print("⚠️  WARNING: This is not recommended for production use")
+    
+    try:
+        subprocess.run([sys.executable, 'app.py'])
+    except Exception as e:
+        print(f"❌ Failed to start Flask development server: {e}")
+        sys.exit(1)
+
+def main():
+    """Main entry point"""
+    print("🎯 MindGraph Platform-Aware Server Launcher")
+    print("=" * 50)
+    
+    # Detect platform
+    current_platform = detect_platform()
+    print(f"🖥️  Platform detected: {current_platform} ({platform.system()} {platform.release()})")
+    
+    # Check if force mode is specified
+    force_server = os.getenv('MINDGRAPH_SERVER', '').lower()
+    if force_server:
+        print(f"🔧 Forced server mode: {force_server}")
+    
+    # Choose server based on platform or force mode
+    if force_server == 'waitress':
+        run_waitress()
+    elif force_server == 'gunicorn':
+        run_gunicorn()
+    elif force_server == 'flask':
+        run_flask_dev()
+    elif current_platform == 'windows':
+        run_waitress()
+    elif current_platform == 'unix':
+        run_gunicorn()
+    else:
+        print(f"⚠️  Unknown platform: {current_platform}, falling back to Flask development server")
+        run_flask_dev()
+
+if __name__ == '__main__':
+    main()

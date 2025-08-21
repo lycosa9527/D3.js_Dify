@@ -194,6 +194,33 @@ except Exception as e:
     # Don't raise here - allow app to continue with degraded performance
 
 # ============================================================================
+# BROWSER CONTEXT POOL INITIALIZATION
+# ============================================================================
+
+# Initialize browser context pool for optimal PNG generation performance
+try:
+    logger.info("Initializing browser context pool...")
+    from browser_pool import get_browser_context_pool, initialize_worker_browser_context_pool
+    
+    # Initialize browser context pool asynchronously
+    async def init_browser_context_pool():
+        await initialize_worker_browser_context_pool()
+    
+    # Run initialization in new event loop
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(init_browser_context_pool())
+        logger.info("Browser context pool initialized successfully")
+    finally:
+        loop.close()
+        
+except Exception as e:
+    logger.error(f"Failed to initialize browser context pool: {e}")
+    logger.warning("Application will continue with standard browser creation (reduced performance)")
+    # Don't raise here - allow app to continue with degraded performance
+
+# ============================================================================
 # REQUEST LOGGING AND MONITORING
 # ============================================================================
 
