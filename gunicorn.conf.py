@@ -94,6 +94,10 @@ def worker_abort(worker):
     """Called when a worker receives the SIGABRT signal."""
     worker.log.info("Worker %s aborted", worker.pid)
 
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
 # Environment variables for worker processes
 raw_env = [
     'MINDGRAPH_ENV=production',
@@ -103,10 +107,17 @@ raw_env = [
 
 # Validate critical environment variables
 required_env_vars = ['QWEN_API_KEY']
+missing_env_vars = []
 for env_var in required_env_vars:
     if not os.getenv(env_var):
+        missing_env_vars.append(env_var)
         print(f"⚠️  Warning: {env_var} environment variable not set")
         print("   This may cause the application to fail")
+
+if missing_env_vars:
+    print(f"❌ Critical environment variables missing: {', '.join(missing_env_vars)}")
+    print("   Please check your .env file or set these environment variables")
+    print("   The application may fail to start properly")
 
 # Performance tuning
 # max_requests and max_requests_jitter are already defined above

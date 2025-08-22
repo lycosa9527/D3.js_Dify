@@ -99,15 +99,33 @@ def run_gunicorn():
             print("   Please ensure gunicorn.conf.py exists in the project root")
             sys.exit(1)
         
+        # Check critical environment variables
+        from dotenv import load_dotenv
+        load_dotenv()  # Load .env file
+        
+        qwen_api_key = os.getenv('QWEN_API_KEY')
+        if not qwen_api_key:
+            print("❌ QWEN_API_KEY environment variable not set")
+            print("   Please check your .env file or set the environment variable")
+            print("   Example: export QWEN_API_KEY='your-api-key-here'")
+            sys.exit(1)
+        
+        print(f"✅ Environment variables loaded successfully")
+        print(f"   QWEN_API_KEY: {'*' * min(len(qwen_api_key), 8)}...")
+        
         # Use subprocess to run Gunicorn with configuration file
         cmd = [sys.executable, '-m', 'gunicorn', '--config', 'gunicorn.conf.py', 'app:app']
         print(f"🚀 Running: {' '.join(cmd)}")
         
         try:
-            result = subprocess.run(cmd, check=True)
+            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
         except subprocess.CalledProcessError as e:
             print(f"❌ Gunicorn failed with exit code {e.returncode}")
             print(f"Error details: {e}")
+            if e.stdout:
+                print(f"Gunicorn stdout: {e.stdout}")
+            if e.stderr:
+                print(f"Gunicorn stderr: {e.stderr}")
             sys.exit(1)
         except FileNotFoundError:
             print("❌ Gunicorn not found. Install with: pip install gunicorn>=21.2.0")
