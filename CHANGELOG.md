@@ -735,9 +735,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Application Name Migration
 - **Complete Branding Update**: Migrated from "D3.js_Dify" to "MindGraph" across all project files
-- **Consistent Naming**: Updated application name in frontend files, backend routes, Docker configurations, and environment examples
+- **Consistent Naming**: Updated application name in frontend files, backend routes, and environment examples
 - **User Interface Updates**: Updated debug.html with new application name and localStorage keys
-- **Docker Configuration**: Updated all Docker files to use "mindgraph_exports" directory instead of "d3js_dify_exports"
+- **Docker Configuration**: Docker support removed - will be added back later
 
 #### Enhanced Diagram Type Classification
 - **Improved LLM Response Parsing**: Fixed exact matching logic in diagram type classification to prevent substring conflicts
@@ -756,7 +756,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### File System Updates
 - **Frontend Consistency**: Updated `templates/debug.html` with new application name and localStorage keys
 - **Backend Routes**: Verified and updated application name references in `web_routes.py`, `api_routes.py`, and `app.py`
-- **Docker Files**: Updated `docker/run-docker.sh`, `docker/run-docker.bat`, `docker/Dockerfile`, and `docker/docker-compose.yml`
+- **Docker Files**: Docker support removed - will be added back later
 - **Environment Configuration**: Updated `env.example` with correct application name in comments
 
 ### 📋 Documentation Updates
@@ -764,7 +764,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### User Documentation
 - **Application Name**: All documentation now reflects the new "MindGraph" branding
 - **Debug Interface**: Updated debug tool interface with new application name
-- **Docker Documentation**: Updated Docker deployment instructions with new naming conventions
+- **Docker Documentation**: Docker support removed - will be added back later
 
 ### 🛡️ Security & Stability
 
@@ -778,7 +778,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### From Version 2.3.0 to 2.3.1
 
 1. **Application Name**: The application is now consistently named "MindGraph" throughout
-2. **Docker Exports**: Export directory changed from `d3js_dify_exports` to `mindgraph_exports`
+2. **Docker Exports**: Docker support removed - will be added back later
 3. **Local Storage**: Debug interface now uses `mindgraph_history` instead of `d3js_dify_history`
 4. **No Breaking Changes**: All existing functionality remains the same, only naming has been updated
 
@@ -790,10 +790,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `templates/debug.html` - Updated application name and localStorage keys
 
 #### Docker Files
-- `docker/run-docker.sh` - Updated export directory name
-- `docker/run-docker.bat` - Updated export directory name
-- `docker/Dockerfile` - Updated export directory name
-- `docker/docker-compose.yml` - Updated export directory name
+- Docker support removed - will be added back later
 
 #### Configuration Files
 - `env.example` - Updated application name in comments
@@ -979,8 +976,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Timeout Handling**: Improved timeout management for API calls
 
 #### Docker Support
-- **Enhanced Dockerfile**: Updated with version 2.1.0 and comprehensive environment configuration
-- **Docker Compose**: Improved configuration with health checks and resource limits
+- Docker support removed - will be added back later
 - **Production Ready**: Optimized for production deployment with proper logging
 
 ### 📋 Documentation Updates
@@ -1027,11 +1023,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    - All configuration is automatically loaded from environment variables
    - No code changes required for existing configurations
 
-4. **Docker**: Update Docker deployment
-   ```bash
-   docker build -t mindgraph:2.1.0 .
-   docker-compose up -d
-   ```
+4. **Docker**: Docker support removed - will be added back later
 
 ### 📦 Files Changed
 
@@ -1041,15 +1033,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `requirements.txt` - Updated dependencies with version 2.1.0 header
 
 #### Docker Files
-- `docker/Dockerfile` - Enhanced with version 2.1.0 and comprehensive environment configuration
-- `docker/docker-compose.yml` - Improved with health checks and resource management
+- Docker support removed - will be added back later
 
 #### Documentation
 - `README.md` - Updated with version 2.0.0 features and improved instructions
 - `CHANGELOG.md` - This file (new)
 
 #### Utility Files
-- `dependency_checker/check_dependencies.py` - Updated to match app.py validation logic
+- Dependency checker removed for simplicity
 
 ### 🎯 Breaking Changes
 
@@ -1089,7 +1080,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **D3.js Visualization**: Interactive charts and graphs
 - **PNG Export**: High-quality image export functionality
 - **Multi-language Support**: English and Chinese language support
-- **Docker Support**: Containerized deployment
+- **Docker Support**: Docker support removed - will be added back later
 - **RESTful API**: Comprehensive API for graph generation
 - **Web Interface**: User-friendly web application
 

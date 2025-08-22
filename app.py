@@ -50,8 +50,6 @@ import asyncio
 import base64
 import subprocess
 from werkzeug.exceptions import HTTPException
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from flask_cors import CORS
 from api_routes import api
 from web_routes import web
@@ -76,8 +74,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Import dependency checker module for comprehensive validation
-import dependency_checker.check_dependencies as dep_checker
+# Dependency checker removed for simplicity
 
 # ============================================================================
 # DEPENDENCY VALIDATION
@@ -97,7 +94,7 @@ def validate_dependencies():
     
     Exits with error code 1 if critical dependencies are missing.
     """
-    logger.info("Validating dependencies and configuration...")
+    # Validating dependencies and configuration silently...
     
     # Validate Python version requirement
     if sys.version_info < (3, 8):
@@ -159,7 +156,7 @@ def validate_dependencies():
             logger.error(f"Failed to install Playwright browser: {e}")
             sys.exit(1)
     
-    logger.info("Dependencies validated successfully")
+    # Dependencies validated successfully
 
 # Run dependency validation before application startup
 validate_dependencies()
@@ -177,14 +174,11 @@ app = Flask(__name__)
 
 # Initialize lazy loading JavaScript cache at startup for optimal performance
 try:
-    logger.info("Initializing JavaScript cache...")
+    # Initialize JavaScript cache silently
     from static.js.lazy_cache_manager import lazy_js_cache, get_cache_stats
     
     # Verify cache initialization
-    if lazy_js_cache.is_initialized():
-        stats = get_cache_stats()
-        logger.info(f"JavaScript cache ready (Memory: {stats['max_memory_mb']}MB, TTL: {lazy_js_cache.cache_ttl_seconds}s)")
-    else:
+    if not lazy_js_cache.is_initialized():
         logger.error("JavaScript cache failed to initialize")
         raise RuntimeError("JavaScript cache initialization failed")
         
@@ -197,28 +191,8 @@ except Exception as e:
 # BROWSER CONTEXT POOL INITIALIZATION
 # ============================================================================
 
-# Initialize browser context pool for optimal PNG generation performance
-try:
-    logger.info("Initializing browser context pool...")
-    from browser_pool import get_browser_context_pool, initialize_worker_browser_context_pool
-    
-    # Initialize browser context pool asynchronously
-    async def init_browser_context_pool():
-        await initialize_worker_browser_context_pool()
-    
-    # Run initialization in new event loop
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        loop.run_until_complete(init_browser_context_pool())
-        logger.info("Browser context pool initialized successfully")
-    finally:
-        loop.close()
-        
-except Exception as e:
-    logger.error(f"Failed to initialize browser context pool: {e}")
-    logger.warning("Application will continue with standard browser creation (reduced performance)")
-    # Don't raise here - allow app to continue with degraded performance
+# Browser context pool disabled for quick deployment - will be rewritten later
+# Browser context pool disabled for quick deployment
 
 # ============================================================================
 # REQUEST LOGGING AND MONITORING
@@ -276,8 +250,8 @@ else:
         # Add production domains here
     ])
 
-# Configure rate limiting for API protection
-limiter = Limiter(get_remote_address, app=app, default_limits=["20 per minute"])
+# Rate limiting removed for simplicity
+# Rate limiting disabled - API protection removed
 
 # ============================================================================
 # ROUTE REGISTRATION
@@ -290,7 +264,7 @@ app.register_blueprint(api)
 app.register_blueprint(web)
 
 # Log startup completion
-logger.info("MindGraph application ready on port 9527")
+# MindGraph application ready on port 9527
 
 # ============================================================================
 # BACKWARD COMPATIBILITY ROUTES
@@ -638,8 +612,7 @@ def print_setup_instructions():
     
     Includes:
     - Local development setup
-    - Docker deployment
-    - Manual dependency checking
+            - Docker deployment (removed - will be added back later)
     """
     logger.info("""
 ================================================================================
@@ -667,13 +640,7 @@ If you are seeing this message, you may be missing required dependencies.
 
 6. Open your browser and visit: http://localhost:9527
 
-🐳 Option 2: Run with Docker (No Node.js or Python setup needed)
-
-1. Install Docker: https://www.docker.com/products/docker-desktop
-2. Build the Docker image:
-   docker build -t mindgraph .
-3. Run the Docker container:
-   docker run -p 9527:9527 mindgraph
+    🐳 Option 2: Docker deployment (removed - will be added back later)
 4. Open your browser and visit: http://localhost:9527
 
 📋 Manual Dependency Check

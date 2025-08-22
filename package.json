@@ -9,7 +9,7 @@
     "npm": ">=10.0.0"
   },
   "scripts": {
-    "start": "python app.py",
+    "start": "python run_server.py",
     "dev": "python app.py --debug",
     "test": "pytest",
     "lint": "flake8 .",

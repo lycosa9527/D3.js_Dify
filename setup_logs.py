@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 MindGraph Logs Directory Setup Script
-Creates the logs directory and sets proper permissions for Gunicorn logging.
-Run this script before starting the server on Ubuntu/Linux systems.
+Creates the logs directory and sets proper permissions for Waitress logging.
+Run this script before starting the server on any platform.
 """
 
 import os
@@ -30,9 +30,9 @@ def setup_logs_directory():
         
         # Create log files if they don't exist
         log_files = [
-            "gunicorn_access.log",
-            "gunicorn_error.log", 
-            "gunicorn.pid",
+            "waitress_access.log",
+            "waitress_error.log", 
+            "waitress.pid",
             "app.log",
             "agent.log"
         ]

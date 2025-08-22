@@ -1115,14 +1115,12 @@ def get_timing_stats():
 @api.route('/browser_context_pool_stats', methods=['GET'])
 @handle_api_errors
 def get_browser_context_pool_stats():
-    """Get browser context pool performance statistics and health information."""
-    try:
-        from browser_pool import get_browser_context_pool_stats
-        stats = get_browser_context_pool_stats()
-        return jsonify(stats)
-    except Exception as e:
-        logger.error(f"Failed to get browser context pool stats: {e}")
-        return jsonify({'error': f'Failed to get browser context pool stats: {e}'}), 500
+    """Browser context pool statistics endpoint (disabled for quick deployment)"""
+    return jsonify({
+        'status': 'disabled',
+        'message': 'Browser context pool disabled for quick deployment - will be rewritten later',
+        'timestamp': time.time()
+    })
 
 @api.route('/clear_cache', methods=['POST'])
 def clear_cache():

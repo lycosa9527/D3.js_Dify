@@ -663,7 +663,7 @@ X-RateLimit-Reset: 1640995200
 ### Getting Help
 
 - Check application logs in the `logs/` directory
-- Run the dependency checker: `python dependency_checker/check_dependencies.py`
+- Check dependencies manually: `pip list`, `node --version`, `npm --version`
 - Review error messages for specific guidance
 - Check system resources and API service status
 

@@ -65,12 +65,34 @@
    - `QWEN_API_KEY` - Required for core functionality
 
 4. **Run the application**
+   
+   **Production (Recommended):**
+   ```bash
+   python run_server.py
+   ```
+   
+   **Development:**
    ```bash
    python app.py
    ```
 
 5. **Open your browser**
    Navigate to `http://localhost:9527/debug` to access the web interface.
+
+## 🖥️ Server Configuration
+
+MindGraph now uses **Waitress** as the primary WSGI server for both development and production:
+
+- **Cross-platform compatibility**: Works on Windows, macOS, and Linux
+- **Production-ready**: Handles concurrent requests efficiently
+- **Simple configuration**: Single configuration file (`waitress.conf.py`)
+- **No complex setup**: Just run `python run_server.py`
+
+### Server Options
+
+- **Waitress (Production)**: `python run_server.py` - Uses Waitress with optimized settings
+- **Flask Dev**: `python app.py` - Development server with auto-reload
+- **Docker**: Docker support removed - will be added back later
 
 ## 🎨 Supported Diagram Types
 

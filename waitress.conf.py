@@ -1,5 +1,5 @@
-# Waitress Configuration for MindGraph (Windows Environment)
-# Waitress is a pure-Python WSGI server that works on Windows
+# Waitress Configuration for MindGraph
+# Waitress is a pure-Python WSGI server that works on all platforms
 # This provides better performance than Flask development server
 
 import os
@@ -10,7 +10,7 @@ port = int(os.getenv('PORT', 9527))  # Use MindGraph default port
 
 # Connection settings
 listen = f"{host}:{port}"
-threads = 4  # Number of threads (similar to Gunicorn workers)
+threads = 4  # Number of threads for concurrent requests
 
 # Timeouts
 cleanup_interval = 30
@@ -26,7 +26,6 @@ recv_bytes = 65536
 # map_async is not a valid Waitress setting - removed
 
 # Environment
-os.environ['MINDGRAPH_ENV'] = 'waitress'
-os.environ['WAITRESS_WORKER'] = 'true'
+os.environ['MINDGRAPH_ENV'] = 'production'
 
-print(f"Waitress configuration loaded for {host}:{port} with {threads} threads")
+# Configuration loaded silently
