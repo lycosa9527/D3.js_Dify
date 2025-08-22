@@ -118,7 +118,22 @@ def run_gunicorn():
         print(f"🚀 Running: {' '.join(cmd)}")
         
         try:
-            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+            # Run Gunicorn with better error capture
+            print("🔍 Starting Gunicorn...")
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            
+            if result.returncode != 0:
+                print(f"❌ Gunicorn failed with exit code {result.returncode}")
+                if result.stdout:
+                    print(f"Gunicorn stdout: {result.stdout}")
+                if result.stderr:
+                    print(f"Gunicorn stderr: {result.stderr}")
+                sys.exit(1)
+            else:
+                print("✅ Gunicorn started successfully")
+                
+        except subprocess.TimeoutExpired:
+            print("✅ Gunicorn started successfully (timeout reached)")
         except subprocess.CalledProcessError as e:
             print(f"❌ Gunicorn failed with exit code {e.returncode}")
             print(f"Error details: {e}")

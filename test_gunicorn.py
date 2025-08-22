@@ -70,8 +70,36 @@ def main():
     except Exception as e:
         print(f"❌ Error testing basic Gunicorn: {e}")
     
-    # Test with config file
-    print("\n🔧 Testing Gunicorn with config file...")
+    # Test with minimal config file
+    print("\n🔧 Testing Gunicorn with minimal config file...")
+    try:
+        cmd = [sys.executable, '-m', 'gunicorn', '--config', 'gunicorn_test.conf.py', 'app:app']
+        print(f"Running: {' '.join(cmd)}")
+        
+        # Start in background and wait a moment
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        
+        # Wait a few seconds to see if it starts
+        time.sleep(3)
+        
+        # Check if process is still running
+        if process.poll() is None:
+            print("✅ Gunicorn with minimal config started successfully")
+            process.terminate()
+            process.wait()
+        else:
+            stdout, stderr = process.communicate()
+            print(f"❌ Gunicorn with minimal config failed")
+            if stdout:
+                print(f"stdout: {stdout.decode()}")
+            if stderr:
+                print(f"stderr: {stderr.decode()}")
+            
+    except Exception as e:
+        print(f"❌ Error testing Gunicorn with minimal config: {e}")
+    
+    # Test with original config file
+    print("\n🔧 Testing Gunicorn with original config file...")
     try:
         cmd = [sys.executable, '-m', 'gunicorn', '--config', 'gunicorn.conf.py', 'app:app']
         print(f"Running: {' '.join(cmd)}")
@@ -84,19 +112,19 @@ def main():
         
         # Check if process is still running
         if process.poll() is None:
-            print("✅ Gunicorn with config started successfully")
+            print("✅ Gunicorn with original config started successfully")
             process.terminate()
             process.wait()
         else:
             stdout, stderr = process.communicate()
-            print(f"❌ Gunicorn with config failed")
+            print(f"❌ Gunicorn with original config failed")
             if stdout:
                 print(f"stdout: {stdout.decode()}")
             if stderr:
                 print(f"stderr: {stderr.decode()}")
             
     except Exception as e:
-        print(f"❌ Error testing Gunicorn with config: {e}")
+        print(f"❌ Error testing Gunicorn with original config: {e}")
     
     print("\n" + "=" * 40)
     print("Test completed!")
