@@ -966,9 +966,24 @@ def generate_png():
                 except Exception as cleanup_error:
                     logger.warning(f"DEBUG: Error during cleanup: {cleanup_error}")
         
-        # Create a new event loop for PNG generation
-        # Each PNG generation gets its own fresh browser context for proper isolation
-        png_bytes = asyncio.run(render_svg_to_png(spec, graph_type))
+        # Close the async function definition
+        # Now call the async function with proper event loop handling
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_closed():
+                # If the loop is closed, we need to create a new one for this thread
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            
+            png_bytes = loop.run_until_complete(render_svg_to_png(spec, graph_type))
+        except RuntimeError as e:
+            if "Event loop is closed" in str(e):
+                # Fallback: create a new event loop for this thread
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                png_bytes = loop.run_until_complete(render_svg_to_png(spec, graph_type))
+            else:
+                raise
         
         # Calculate rendering time
         render_time = time.time() - render_start_time
