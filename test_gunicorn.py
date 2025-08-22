@@ -44,7 +44,7 @@ def main():
     # Test basic Gunicorn start (without config file first)
     print("\n🔧 Testing basic Gunicorn start...")
     try:
-        cmd = [sys.executable, '-m', 'gunicorn', '--bind', '127.0.0.1:8000', '--workers', '1', '--timeout', '30', 'app:app']
+        cmd = [sys.executable, '-m', 'gunicorn', '--bind', '127.0.0.1:9527', '--workers', '1', '--timeout', '30', 'app:app']
         print(f"Running: {' '.join(cmd)}")
         
         # Start in background and wait a moment

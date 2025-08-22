@@ -118,29 +118,18 @@ def run_gunicorn():
         print(f"🚀 Running: {' '.join(cmd)}")
         
         try:
-            # Run Gunicorn with better error capture
-            print("🔍 Starting Gunicorn...")
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            # Run Gunicorn as a long-running server process
+            print("🔍 Starting Gunicorn server...")
+            print("💡 Note: Gunicorn will run in the foreground. Use Ctrl+C to stop.")
             
-            if result.returncode != 0:
-                print(f"❌ Gunicorn failed with exit code {result.returncode}")
-                if result.stdout:
-                    print(f"Gunicorn stdout: {result.stdout}")
-                if result.stderr:
-                    print(f"Gunicorn stderr: {result.stderr}")
-                sys.exit(1)
-            else:
-                print("✅ Gunicorn started successfully")
-                
-        except subprocess.TimeoutExpired:
-            print("✅ Gunicorn started successfully (timeout reached)")
-        except subprocess.CalledProcessError as e:
-            print(f"❌ Gunicorn failed with exit code {e.returncode}")
-            print(f"Error details: {e}")
-            if e.stdout:
-                print(f"Gunicorn stdout: {e.stdout}")
-            if e.stderr:
-                print(f"Gunicorn stderr: {e.stderr}")
+            # Start Gunicorn and let it run (don't capture output, let it display)
+            subprocess.run(cmd)
+            
+        except KeyboardInterrupt:
+            print("\n🛑 Gunicorn stopped by user")
+            sys.exit(0)
+        except FileNotFoundError:
+            print("❌ Gunicorn not found. Install with: pip install gunicorn>=21.2.0")
             sys.exit(1)
         except FileNotFoundError:
             print("❌ Gunicorn not found. Install with: pip install gunicorn>=21.2.0")
