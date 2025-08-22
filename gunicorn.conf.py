@@ -2,13 +2,16 @@
 # Production WSGI deployment with Browser Context Pool per Worker
 # 
 # This configuration enables:
-# - 4 worker processes for concurrent request handling
+# - Dynamic worker processes based on CPU cores (2 × CPU + 1, max 4)
 # - Each worker has its own browser context pool (5 contexts per worker)
-# - Total capacity: 4 workers × 5 contexts = 20 concurrent PNG generations
+# - Total capacity: workers × 5 contexts = concurrent PNG generations
 # - WSGI compliance for production deployment
+# - Cross-platform compatibility (Linux, macOS, BSD)
+# - Automatic platform-specific optimizations
 
 import multiprocessing
 import os
+import platform
 
 # Get the directory where this config file is located
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -24,6 +27,11 @@ worker_connections = 1000
 max_requests = 1000
 max_requests_jitter = 50
 preload_app = False  # Don't preload - let each worker initialize its own browser context pool
+# Platform-specific optimizations
+if platform.system().lower() == 'linux':
+    worker_tmp_dir = "/dev/shm"  # Use shared memory for better performance on Linux
+else:
+    worker_tmp_dir = None  # Use system default on other platforms
 
 # Timeout settings
 timeout = 120  # 2 minutes for complex diagram generation
@@ -35,6 +43,10 @@ loglevel = "info"
 accesslog = os.path.join(BASE_DIR, "logs", "gunicorn_access.log")
 errorlog = os.path.join(BASE_DIR, "logs", "gunicorn_error.log")
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'
+
+# Enhanced logging for production debugging
+enable_stdio_inheritance = True  # Allow workers to inherit stdout/stderr
+capture_output = True  # Capture worker output
 
 # Process naming
 proc_name = 'mindgraph_api'
@@ -49,6 +61,9 @@ tmp_upload_dir = None
 # SSL (for production HTTPS)
 # keyfile = None
 # certfile = None
+
+# Health check configuration
+health_check_path = "/health"
 
 # Worker lifecycle hooks
 def on_starting(server):
@@ -83,11 +98,18 @@ def worker_abort(worker):
 raw_env = [
     'MINDGRAPH_ENV=production',
     'GUNICORN_WORKER=true',
+    'PYTHONUNBUFFERED=1',  # Ensure Python output is not buffered
 ]
 
+# Validate critical environment variables
+required_env_vars = ['QWEN_API_KEY']
+for env_var in required_env_vars:
+    if not os.getenv(env_var):
+        print(f"⚠️  Warning: {env_var} environment variable not set")
+        print("   This may cause the application to fail")
+
 # Performance tuning
-max_requests = 1000  # Restart worker after 1000 requests to prevent memory leaks
-max_requests_jitter = 100  # Add randomness to prevent thundering herd
+# max_requests and max_requests_jitter are already defined above
 
 # Memory and file limits
 limit_request_line = 4094
@@ -100,7 +122,8 @@ if os.getenv('MINDGRAPH_ENV') == 'development':
     loglevel = 'debug'
     reload = True
     reload_extra_files = ['templates/', 'static/']
+    preload_app = False  # Don't preload in development
 else:
-    # Production optimizations
+    # Production optimizations - use CPU-based worker calculation
     workers = min(4, (multiprocessing.cpu_count() * 2) + 1)
     preload_app = False  # Browser context pools need per-worker initialization

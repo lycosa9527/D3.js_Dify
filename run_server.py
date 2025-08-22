@@ -73,6 +73,11 @@ def run_gunicorn():
     """Run MindGraph with Gunicorn (Linux/Unix)"""
     print("🟩 Starting MindGraph with Gunicorn (Unix environment)")
     
+    # Check system requirements for Gunicorn
+    if platform.system().lower() == 'windows':
+        print("⚠️  Warning: Gunicorn is not recommended on Windows")
+        print("   Consider using Waitress instead: MINDGRAPH_SERVER=waitress python run_server.py")
+    
     if not check_package_installed('gunicorn'):
         print("❌ Gunicorn not installed. Install with: pip install gunicorn>=21.2.0")
         sys.exit(1)
@@ -87,10 +92,29 @@ def run_gunicorn():
         print(f"📁 Working directory: {os.getcwd()}")
         print(f"📁 Logs directory: {os.path.join(os.getcwd(), 'logs')}")
         
+        # Validate Gunicorn configuration file exists
+        config_file = 'gunicorn.conf.py'
+        if not os.path.exists(config_file):
+            print(f"❌ Gunicorn configuration file not found: {config_file}")
+            print("   Please ensure gunicorn.conf.py exists in the project root")
+            sys.exit(1)
+        
         # Use subprocess to run Gunicorn with configuration file
         cmd = [sys.executable, '-m', 'gunicorn', '--config', 'gunicorn.conf.py', 'app:app']
         print(f"🚀 Running: {' '.join(cmd)}")
-        subprocess.run(cmd)
+        
+        try:
+            result = subprocess.run(cmd, check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"❌ Gunicorn failed with exit code {e.returncode}")
+            print(f"Error details: {e}")
+            sys.exit(1)
+        except FileNotFoundError:
+            print("❌ Gunicorn not found. Install with: pip install gunicorn>=21.2.0")
+            sys.exit(1)
+        except KeyboardInterrupt:
+            print("🛑 Gunicorn interrupted by user")
+            sys.exit(0)
     except Exception as e:
         print(f"❌ Failed to start Gunicorn: {e}")
         sys.exit(1)
