@@ -123,7 +123,14 @@ def run_gunicorn():
             print("💡 Note: Gunicorn will run in the foreground. Use Ctrl+C to stop.")
             
             # Start Gunicorn and let it run (don't capture output, let it display)
-            subprocess.run(cmd)
+            result = subprocess.run(cmd, check=False)
+            
+            # If we get here, Gunicorn exited
+            if result.returncode != 0:
+                print(f"❌ Gunicorn exited with code {result.returncode}")
+                print("💡 This usually means there's a configuration error")
+                print("💡 Try running: python -m gunicorn --config gunicorn.conf.py app:app")
+                sys.exit(1)
             
         except KeyboardInterrupt:
             print("\n🛑 Gunicorn stopped by user")
@@ -131,12 +138,6 @@ def run_gunicorn():
         except FileNotFoundError:
             print("❌ Gunicorn not found. Install with: pip install gunicorn>=21.2.0")
             sys.exit(1)
-        except FileNotFoundError:
-            print("❌ Gunicorn not found. Install with: pip install gunicorn>=21.2.0")
-            sys.exit(1)
-        except KeyboardInterrupt:
-            print("🛑 Gunicorn interrupted by user")
-            sys.exit(0)
     except Exception as e:
         print(f"❌ Failed to start Gunicorn: {e}")
         sys.exit(1)
