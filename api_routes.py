@@ -1808,10 +1808,14 @@ def generate_dingtalk():
             markdown_text += f"**图表类型**: {graph_type}\n\n"
             markdown_text += f"**生成时间**: {total_time:.2f}秒"
             
-            # Return DingTalk markdown format
+            # Create a descriptive title based on the prompt
+            title = f"MindGraph: {prompt[:50]}{'...' if len(prompt) > 50 else ''}"
+            
+            # Return DingTalk markdown format with both title and text
             return jsonify({
                 "msgtype": "markdown",
                 "markdown": {
+                    "title": title,
                     "text": markdown_text
                 }
             })
