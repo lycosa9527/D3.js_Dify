@@ -1805,22 +1805,22 @@ def generate_dingtalk():
             markdown_text = f"![图表]({image_url})"
             
             # Return DingTalk markdown format with required title and text fields
-            return {
+            return jsonify({
                 "msgtype": "markdown",
                 "markdown": {
                     "title": f"MindGraph: {prompt[:50]}...",
                     "text": markdown_text
                 }
-            }
+            })
             
         except Exception as e:
             logger.error(f"Failed to save DingTalk image: {e}")
-            return {
+            return jsonify({
                 "msgtype": "text",
                 "text": {
                     "content": f"❌ 图片保存失败：{str(e)}"
                 }
-            }, 500
+            }), 500
             
     except Exception as e:
         logger.error(f"/generate_dingtalk failed: {e}", exc_info=True)
@@ -1831,12 +1831,12 @@ def generate_dingtalk():
             error_msg = f"❌ 图表生成失败：{str(e)}"
         
         # Return DingTalk-compatible error format
-        return {
+        return jsonify({
             "msgtype": "text",
             "text": {
                 "content": error_msg
             }
-        }, 500
+        }), 500
 
 
  
