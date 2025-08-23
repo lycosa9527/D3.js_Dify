@@ -449,7 +449,7 @@ def get_modular_cache_status():
         JSON with modular cache status, performance metrics, and optimization details
     """
     try:
-        from static.js.modular_cache_manager import getModularCacheStats, getModularPerformanceSummary
+        from static.js.modular_cache_python import getModularCacheStats, getModularPerformanceSummary
         
         stats = getModularCacheStats()
         performance_summary = getModularPerformanceSummary()
