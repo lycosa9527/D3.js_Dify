@@ -1190,6 +1190,9 @@ def generate_dingtalk():
         render_start_time = time.time()
         
         async def render_svg_to_png(spec, graph_type):
+            # Import config for dimensions
+            from config import config
+            
             # Use modular loading for optimal performance (Option 3: Code Splitting)
             try:
                 # Import the modular cache manager (Python wrapper)
