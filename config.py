@@ -139,9 +139,25 @@ class Config:
         host = self.HOST
         port = self.PORT
         
-        # Convert 0.0.0.0 to localhost for external access
-        if host == '0.0.0.0':
-            host = 'localhost'
+        # For external access, we need the actual server IP, not localhost
+        # Check if we have an explicit external host configured
+        external_host = self._get_cached_value('EXTERNAL_HOST')
+        if external_host:
+            host = external_host
+        elif host == '0.0.0.0':
+            # If no external host configured, try to get the actual server IP
+            # This is a fallback - ideally set EXTERNAL_HOST environment variable
+            try:
+                import socket
+                # Get the actual IP address of the server
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.connect(("8.8.8.8", 80))
+                actual_ip = s.getsockname()[0]
+                s.close()
+                host = actual_ip
+            except Exception:
+                # Fallback to localhost if we can't determine IP
+                host = 'localhost'
         
         return f"http://{host}:{port}"
     
