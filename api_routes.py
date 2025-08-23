@@ -1127,15 +1127,30 @@ def generate_dingtalk():
     data = request.json
     valid, msg = validate_request_data(data, ['prompt'])
     if not valid:
-        return jsonify({'error': msg}), 400
+        return jsonify({
+            "msgtype": "text",
+            "text": {
+                "content": f"❌ 请求验证失败：{msg}"
+            }
+        }), 400
     
     prompt = sanitize_prompt(data['prompt'])
     if not prompt:
-        return jsonify({'error': 'Invalid or empty prompt'}), 400
+        return jsonify({
+            "msgtype": "text",
+            "text": {
+                "content": "❌ 提示词无效或为空"
+            }
+        }), 400
     
     language = data.get('language', 'zh')
     if not isinstance(language, str) or language not in ['zh', 'en']:
-        return jsonify({'error': 'Invalid language. Must be "zh" or "en"'}), 400
+        return jsonify({
+            "msgtype": "text",
+            "text": {
+                "content": "❌ 语言无效。必须是 'zh' 或 'en'"
+            }
+        }), 400
     
     logger.info(f"DingTalk /generate_dingtalk: prompt={prompt!r}, language={language!r}")
     
@@ -1154,19 +1169,34 @@ def generate_dingtalk():
         logger.info(f"LLM processing completed in {llm_time:.3f}s")
     except Exception as e:
         logger.error(f"Agent workflow failed: {e}")
-        return jsonify({'error': 'Failed to generate graph specification'}), 500
+        return jsonify({
+            "msgtype": "text",
+            "text": {
+                "content": f"❌ 图表规格生成失败：{str(e)}"
+            }
+        }), 500
     
     # Validate the generated spec before processing
     from graph_specs import DIAGRAM_VALIDATORS
     # Surface generation error without changing type
     if isinstance(spec, dict) and spec.get('error'):
-        return jsonify({'error': spec.get('error')}), 400
+        return jsonify({
+            "msgtype": "text",
+            "text": {
+                "content": f"❌ 图表规格验证失败：{spec.get('error')}"
+            }
+        }), 400
     if graph_type in DIAGRAM_VALIDATORS:
         validate_fn = DIAGRAM_VALIDATORS[graph_type]
         valid, msg = validate_fn(spec)
         if not valid:
             logger.warning(f"Generated invalid spec for {graph_type}: {msg}")
-            return jsonify({'error': f'Failed to generate valid graph specification: {msg}'}), 400
+            return jsonify({
+                "msgtype": "text",
+                "text": {
+                    "content": f"❌ 图表规格验证失败：{msg}"
+                }
+            }), 400
     else:
         logger.warning(f"No validator found for diagram type: {graph_type}")
     
@@ -1190,7 +1220,12 @@ def generate_dingtalk():
             logger.info(f"Enhanced brace map spec with agent data (original structure preserved)")
         else:
             logger.error(f"Brace map agent failed: {agent_result.get('error')}")
-            return jsonify({'error': f"Brace map generation failed: {agent_result.get('error')}"}), 500
+            return jsonify({
+                "msgtype": "text",
+                "text": {
+                    "content": f"❌ 括号图生成失败：{agent_result.get('error')}"
+                }
+            }), 500
     elif graph_type == 'multi_flow_map':
         # Enhance multi-flow map spec and optionally use recommended dimensions later
         try:
@@ -1766,30 +1801,49 @@ def generate_dingtalk():
             image_url = f"{server_url}/api/temp_images/{filename}"
             logger.info(f"Generated image URL: {image_url}")
             
-            # Return data for DingTalk integration (not the message format itself)
+            # Return DingTalk-compatible markdown format
+            # Create a descriptive title based on the prompt
+            title = f"MindGraph: {prompt[:50]}{'...' if len(prompt) > 50 else ''}"
+            
+            # Create markdown text with the image and additional information
+            markdown_text = f"![MindGraph生成的图表]({image_url})\n\n"
+            markdown_text += f"**提示词**: {prompt}\n\n"
+            markdown_text += f"**图表类型**: {graph_type}\n\n"
+            markdown_text += f"**生成时间**: {total_time:.2f}秒"
+            
+            # Return DingTalk markdown format
             return jsonify({
-                "success": True,
-                "prompt": prompt,
-                "image_url": image_url,
-                "filename": filename,
-                "graph_type": graph_type,
-                "timing": {
-                    "llm_time": llm_time,
-                    "render_time": render_time,
-                    "total_time": total_time
+                "msgtype": "markdown",
+                "markdown": {
+                    "title": title,
+                    "text": markdown_text
                 }
             })
             
         except Exception as e:
             logger.error(f"Failed to save DingTalk image: {e}")
-            return jsonify({'error': f'Failed to save image: {e}'}), 500
+            return jsonify({
+                "msgtype": "text",
+                "text": {
+                    "content": f"❌ 图片保存失败：{str(e)}"
+                }
+            }), 500
             
     except Exception as e:
         logger.error(f"/generate_dingtalk failed: {e}", exc_info=True)
         # If the error is about missing SVG, return a specific message
         if isinstance(e, ValueError) and str(e).startswith("SVG element not found"):
-            return jsonify({'error': 'Failed to render the graph: SVG element not found. Please check your input or try a different prompt.'}), 400
-        return jsonify({'error': f'Failed to generate DingTalk image: {e}'}), 500
+            error_msg = "❌ 图表渲染失败：SVG元素未找到。请检查您的输入或尝试不同的提示词。"
+        else:
+            error_msg = f"❌ 图表生成失败：{str(e)}"
+        
+        # Return DingTalk-compatible error format
+        return jsonify({
+            "msgtype": "text",
+            "text": {
+                "content": error_msg
+            }
+        }), 500
 
 
  
