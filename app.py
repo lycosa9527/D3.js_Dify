@@ -166,7 +166,7 @@ validate_dependencies()
 # ============================================================================
 
 # Initialize Flask application
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static', static_url_path='/static')
 
 # ============================================================================
 # JAVASCRIPT CACHE INITIALIZATION
@@ -289,6 +289,16 @@ def generate_graph_compatibility():
     # Import the function from api_routes to avoid duplication
     from api_routes import generate_graph
     return generate_graph()
+
+@app.route('/generate_dingtalk', methods=['POST'])
+def generate_dingtalk_compatibility():
+    """
+    Backward compatibility route for /generate_dingtalk (without /api prefix).
+    Redirects to the actual API endpoint.
+    """
+    # Import the function from api_routes to avoid duplication
+    from api_routes import generate_dingtalk
+    return generate_dingtalk()
 
 # ============================================================================
 # APPLICATION STATUS AND HEALTH CHECKS

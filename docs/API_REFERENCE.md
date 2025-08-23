@@ -74,51 +74,93 @@ When parameters are omitted, MindGraph automatically applies sensible defaults:
 {
   "theme": "modern|classic|minimal|dark|light",
   "colors": {
-    "primary": "#hexcolor",
-    "secondary": "#hexcolor",
-    "background": "#hexcolor"
-  },
-  "fontSize": {
-    "title": 18,
-    "subtitle": 14,
-    "body": 12
-  }
-}
-```
-
-#### Default Style Configuration
-
-When no style is specified, MindGraph automatically applies:
-
-```json
-{
-  "theme": "modern",
-  "colors": {
-    "primary": "#4e79a7",
-    "secondary": "#f28e2c",
-    "background": "#ffffff"
-  },
-  "fontSize": {
-    "title": 18,
-    "subtitle": 14,
-    "body": 12
+    "primary": "#hex_color",
+    "secondary": "#hex_color",
+    "accent": "#hex_color"
   }
 }
 ```
 
 #### Response
 
-**Success (200):**
-- **Content-Type**: `image/png`
-- **Body**: PNG image data
+Returns a PNG image file that can be:
+- Displayed directly in a web browser
+- Downloaded and saved locally
+- Embedded in documents or presentations
 
-**Error (400/500):**
-```json
-{
-  "error": "Error description",
+### 2. DingTalk Integration Endpoint
+
+Generates a PNG image for DingTalk platform and returns markdown format with image URL.
+
+```http
+POST /generate_dingtalk
+POST /api/generate_dingtalk
 ```
 
-### 2. Cache Management
+**Note**: Both endpoints are supported for backward compatibility. The `/api/generate_dingtalk` endpoint is the primary one.
+
+#### Request
+
+**Headers:**
+```
+Content-Type: application/json
+```
+
+**Body:**
+```json
+{
+  "prompt": "Compare cats and dogs",
+  "language": "zh"
+}
+```
+
+#### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `prompt` | string | ✅ | Natural language description of what to visualize |
+| `language` | string | ❌ | Language code (`en` or `zh`). Defaults to `zh` |
+
+#### Response
+
+Returns JSON with markdown format and image URL:
+
+```json
+{
+  "success": true,
+  "markdown": "![Compare cats and dogs](http://localhost:9527/api/temp_images/dingtalk_a1b2c3d4_1692812345.png)",
+  "image_url": "http://localhost:9527/api/temp_images/dingtalk_a1b2c3d4_1692812345.png",
+  "filename": "dingtalk_a1b2c3d4_1692812345.png",
+  "prompt": "Compare cats and dogs",
+  "language": "zh",
+  "graph_type": "bubble_map",
+  "timing": {
+    "llm_time": 2.456,
+    "render_time": 1.234,
+    "total_time": 3.690
+  }
+}
+```
+
+#### Important Notes
+
+- **Temporary Storage**: Images are stored in temporary storage and automatically cleaned up after 24 hours
+- **Image Access**: Images are served through the `/api/temp_images/<filename>` endpoint
+- **Automatic Cleanup**: The system automatically removes expired images every 24 hours
+- **No Persistence**: Images are not permanently stored and will be lost after the cleanup period
+
+#### Usage in DingTalk
+
+The `markdown` field can be directly used in DingTalk markdown messages:
+
+```java
+// Example DingTalk integration
+OapiRobotSendRequest.Markdown markdown = new OapiRobotSendRequest.Markdown();
+markdown.setTitle("MindGraph Generated");
+markdown.setText("@" + userId + "  \n  " + response.getMarkdown());
+```
+
+### 3. Style Update Endpoint
 
 #### Clear Cache Endpoint
 

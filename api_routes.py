@@ -80,6 +80,12 @@ def get_comprehensive_timing_stats():
 # Track temporary files for cleanup
 temp_files = set()
 
+# Track generated images for DingTalk endpoint with timestamps
+dingtalk_images = {}  # {image_path: creation_timestamp}
+
+# Import threading for periodic cleanup
+import threading
+
 def cleanup_temp_files():
     """Clean up temporary files on exit."""
     for temp_file in temp_files:
@@ -88,7 +94,47 @@ def cleanup_temp_files():
                 os.unlink(temp_file)
         except OSError:
             pass
+    
+    # Clean up DingTalk images
+    for image_path in dingtalk_images:
+        try:
+            if os.path.exists(image_path):
+                os.unlink(image_path)
+        except OSError:
+            pass
 
+def cleanup_expired_dingtalk_images():
+    """Clean up DingTalk images older than 24 hours."""
+    current_time = time.time()
+    expired_images = []
+    
+    for image_path, creation_time in dingtalk_images.items():
+        if current_time - creation_time > 24 * 60 * 60:  # 24 hours in seconds
+            expired_images.append(image_path)
+    
+    for image_path in expired_images:
+        try:
+            if os.path.exists(image_path):
+                os.unlink(image_path)
+                logger.info(f"Cleaned up expired DingTalk image: {image_path}")
+        except OSError as e:
+            logger.warning(f"Failed to clean up expired image {image_path}: {e}")
+        finally:
+            dingtalk_images.pop(image_path, None)
+    
+    # Schedule next cleanup in 24 hours
+    timer = threading.Timer(24 * 60 * 60, cleanup_expired_dingtalk_images)
+    timer.daemon = True
+    timer.start()
+    
+    logger.info(f"Cleaned up {len(expired_images)} expired DingTalk images. Next cleanup scheduled in 24 hours.")
+
+# Start the periodic cleanup when the module is imported
+cleanup_timer = threading.Timer(24 * 60 * 60, cleanup_expired_dingtalk_images)
+cleanup_timer.daemon = True
+cleanup_timer.start()
+
+# Register cleanup function for application exit
 atexit.register(cleanup_temp_files)
 
 def handle_api_errors(f):
@@ -1036,6 +1082,341 @@ def generate_png():
         return jsonify({'error': f'Failed to generate PNG: {e}'}), 500
 
 
+@api.route('/generate_dingtalk', methods=['POST'])
+@handle_api_errors
+def generate_dingtalk():
+    """Generate PNG image for DingTalk platform and return markdown format with image URL."""
+    # Input validation
+    data = request.json
+    valid, msg = validate_request_data(data, ['prompt'])
+    if not valid:
+        return jsonify({'error': msg}), 400
+    
+    prompt = sanitize_prompt(data['prompt'])
+    if not prompt:
+        return jsonify({'error': 'Invalid or empty prompt'}), 400
+    
+    language = data.get('language', 'zh')
+    if not isinstance(language, str) or language not in ['zh', 'en']:
+        return jsonify({'error': 'Invalid language. Must be "zh" or "en"'}), 400
+    
+    logger.info(f"DingTalk /generate_dingtalk: prompt={prompt!r}, language={language!r}")
+    
+    # Track timing for the entire process
+    total_start_time = time.time()
+    
+    # Generate graph specification using the same workflow as generate_png
+    try:
+        llm_start_time = time.time()
+        result = agent.agent_graph_workflow_with_styles(prompt, language)
+        llm_time = time.time() - llm_start_time
+        
+        spec = result.get('spec', {})
+        graph_type = result.get('diagram_type', 'bubble_map')
+        
+        logger.info(f"LLM processing completed in {llm_time:.3f}s")
+    except Exception as e:
+        logger.error(f"Agent workflow failed: {e}")
+        return jsonify({'error': 'Failed to generate graph specification'}), 500
+    
+    # Validate the generated spec before processing
+    from graph_specs import DIAGRAM_VALIDATORS
+    # Surface generation error without changing type
+    if isinstance(spec, dict) and spec.get('error'):
+        return jsonify({'error': spec.get('error')}), 400
+    if graph_type in DIAGRAM_VALIDATORS:
+        validate_fn = DIAGRAM_VALIDATORS[graph_type]
+        valid, msg = validate_fn(spec)
+        if not valid:
+            logger.warning(f"Generated invalid spec for {graph_type}: {msg}")
+            return jsonify({'error': f'Failed to generate valid graph specification: {msg}'}), 400
+    else:
+        logger.warning(f"No validator found for diagram type: {graph_type}")
+    
+    # Use brace map agent for brace maps
+    if graph_type == 'brace_map':
+        from brace_map_agent import BraceMapAgent
+        brace_agent = BraceMapAgent()
+        agent_result = brace_agent.generate_diagram(spec)
+        if agent_result['success']:
+            # CRITICAL FIX: Keep original spec structure and enhance it with agent data
+            # This prevents breaking the JavaScript renderer which expects the original format
+            enhanced_spec = spec.copy() if isinstance(spec, dict) else spec
+            enhanced_spec['_agent_result'] = agent_result
+            enhanced_spec['_layout_data'] = agent_result.get('layout_data')
+            enhanced_spec['_svg_data'] = agent_result.get('svg_data')
+            enhanced_spec['_optimal_dimensions'] = {
+                'width': agent_result.get('svg_data', {}).get('width'),
+                'height': agent_result.get('svg_data', {}).get('height')
+            }
+            spec = enhanced_spec
+            logger.info(f"Enhanced brace map spec with agent data (original structure preserved)")
+        else:
+            logger.error(f"Brace map agent failed: {agent_result.get('error')}")
+            return jsonify({'error': f"Brace map generation failed: {agent_result.get('error')}"}), 500
+    elif graph_type == 'multi_flow_map':
+        # Enhance multi-flow map spec and optionally use recommended dimensions later
+        try:
+            from multi_flow_map_agent import MultiFlowMapAgent
+            mf_agent = MultiFlowMapAgent()
+            agent_result = mf_agent.enhance_spec(spec)
+            if agent_result.get('success') and 'spec' in agent_result:
+                spec = agent_result['spec']
+            else:
+                logger.warning(f"MultiFlowMapAgent enhancement skipped: {agent_result.get('error')}")
+        except Exception as e:
+            logger.error(f"Error enhancing multi_flow_map spec: {e}")
+    elif graph_type == 'flow_map':
+        # Enhance flow map spec and use recommended dimensions
+        try:
+            from flow_map_agent import FlowMapAgent
+            f_agent = FlowMapAgent()
+            agent_result = f_agent.enhance_spec(spec)
+            if agent_result.get('success') and 'spec' in agent_result:
+                spec = agent_result['spec']
+            else:
+                logger.warning(f"FlowMapAgent enhancement skipped: {agent_result.get('error')}")
+        except Exception as e:
+            logger.error(f"Error enhancing flow_map spec: {e}")
+    
+    # Render SVG and convert to PNG using Playwright
+    try:
+        import nest_asyncio
+        nest_asyncio.apply()
+        import json
+        from playwright.async_api import async_playwright
+        
+        # Track rendering start time
+        render_start_time = time.time()
+        
+        async def render_svg_to_png(spec, graph_type):
+            # Use modular loading for optimal performance (Option 3: Code Splitting)
+            try:
+                # Import the modular cache manager (Python wrapper)
+                from static.js.modular_cache_python import get_javascript_for_graph_type
+                
+                # Get graph-type-specific JavaScript modules with performance stats
+                module_contents, modular_stats = get_javascript_for_graph_type(graph_type)
+                
+                logger.info(f"Modular JavaScript loaded for {graph_type}: {modular_stats['module_names']} ({modular_stats['total_size_kb']}KB)")
+                
+                # Extract modules directly - no more regex parsing!
+                theme_config = module_contents.get('theme-config', '')
+                style_manager = module_contents.get('style-manager', '')
+                
+                # Generate separate script tags for each module instead of concatenating
+                module_script_tags = []
+                for module_name, content in module_contents.items():
+                    if module_name not in ['theme-config', 'style-manager']:
+                        # Add cache-busting to prevent browser from loading cached renderers
+                        cache_buster = f"?v={int(time.time())}"
+                        module_script_tags.append(f'<script data-module="{module_name}" data-cache-buster="{cache_buster}">{content}</script>')
+                
+                renderer_scripts = '\n            '.join(module_script_tags) if module_script_tags else ""
+                
+                # Log what modules are being loaded for debugging
+                logger.info(f"Loading {len(module_contents)} modules for {graph_type}: {list(module_contents.keys())}")
+                
+                # Create HTML content with the spec and renderer
+                html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>MindGraph - {graph_type}</title>
+    <style>
+        body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; background: white; }}
+        .graph-container {{ width: 100%; height: 100vh; }}
+        .loading {{ text-align: center; padding: 50px; font-size: 18px; color: #666; }}
+        .error {{ color: red; text-align: center; padding: 50px; }}
+    </style>
+</head>
+<body>
+    <div class="graph-container">
+        <div class="loading">Generating {graph_type}...</div>
+    </div>
+    
+    <script>
+        // Theme configuration
+        {theme_config}
+        
+        // Style manager
+        {style_manager}
+        
+        // Graph data
+        const graphSpec = {json.dumps(spec, ensure_ascii=False)};
+        const graphType = '{graph_type}';
+        
+        // Renderer scripts
+        {renderer_scripts}
+        
+        // Initialize rendering
+        document.addEventListener('DOMContentLoaded', function() {{
+            try {{
+                // Wait for renderer to be available
+                if (typeof window.renderGraph === 'function') {{
+                    window.renderGraph(graphSpec, graphType);
+                }} else {{
+                    // Fallback: wait a bit for dynamic loading
+                    setTimeout(() => {{
+                        if (typeof window.renderGraph === 'function') {{
+                            window.renderGraph(graphSpec, graphType);
+                        }} else {{
+                            document.querySelector('.graph-container').innerHTML = 
+                                '<div class="error">Failed to load renderer for {graph_type}</div>';
+                        }}
+                    }}, 1000);
+                }}
+            }} catch (error) {{
+                document.querySelector('.graph-container').innerHTML = 
+                    '<div class="error">Rendering error: ' + error.message + '</div>';
+            }}
+        }});
+    </script>
+</body>
+</html>"""
+                
+                # Use Playwright to render the HTML and capture PNG
+                async with async_playwright() as p:
+                    browser = await p.chromium.launch(
+                        headless=True,
+                        args=['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+                    )
+                    
+                    try:
+                        page = await browser.new_page()
+                        
+                        # Set viewport size based on graph type
+                        if graph_type in ['concept_map', 'mind_map']:
+                            width, height = 1200, 800
+                        elif graph_type in ['flow_map', 'multi_flow_map']:
+                            width, height = 1400, 900
+                        elif graph_type == 'brace_map':
+                            # Use dimensions from agent if available
+                            if '_optimal_dimensions' in spec:
+                                width = spec['_optimal_dimensions'].get('width', 1200)
+                                height = spec['_optimal_dimensions'].get('height', 800)
+                            else:
+                                width, height = 1200, 800
+                        else:
+                            width, height = 1000, 700
+                        
+                        await page.set_viewport_size({'width': width, 'height': height})
+                        
+                        # Load the HTML content
+                        await page.set_content(html_content, wait_until='networkidle')
+                        
+                        # Wait for the graph to be rendered
+                        try:
+                            # Wait for SVG element to appear
+                            await page.wait_for_selector('svg', timeout=30000)
+                            
+                            # Additional wait for rendering to complete
+                            await page.wait_for_timeout(2000)
+                            
+                        except Exception as e:
+                            logger.warning(f"Timeout waiting for SVG: {e}")
+                            # Continue anyway - might still have content
+                        
+                        # Capture PNG
+                        png_bytes = await page.screenshot(
+                            type='png',
+                            full_page=True,
+                            optimize_for_speed=True
+                        )
+                        
+                        return png_bytes
+                        
+                    finally:
+                        await browser.close()
+                        
+            except Exception as e:
+                logger.error(f"Error in render_svg_to_png: {e}")
+                raise
+        
+        # Execute the async rendering
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            png_bytes = loop.run_until_complete(render_svg_to_png(spec, graph_type))
+        finally:
+            loop.close()
+        
+        render_time = time.time() - render_start_time
+        total_time = time.time() - total_start_time
+        
+        # Update timing statistics
+        rendering_timing_stats['total_renders'] += 1
+        rendering_timing_stats['total_render_time'] += render_time
+        rendering_timing_stats['render_times'].append(render_time)
+        rendering_timing_stats['last_render_time'] = render_time
+        rendering_timing_stats['llm_time_per_render'] += llm_time
+        rendering_timing_stats['pure_render_time_per_render'] += render_time
+        
+        # Keep only last 100 render times to prevent memory bloat
+        if len(rendering_timing_stats['render_times']) > 100:
+            rendering_timing_stats['render_times'] = rendering_timing_stats['render_times'][-100:]
+        
+        logger.info(f"DingTalk PNG generation completed - LLM: {llm_time:.3f}s, Rendering: {render_time:.3f}s, Total: {total_time:.3f}s")
+        
+        # Save PNG to temporary location for DingTalk
+        try:
+            # Use tempfile for temporary storage
+            import tempfile
+            import uuid
+            
+            # Create a temporary file with a descriptive name
+            temp_fd, temp_path = tempfile.mkstemp(
+                suffix='.png',
+                prefix=f'dingtalk_{uuid.uuid4().hex[:8]}_',
+                dir=tempfile.gettempdir()
+            )
+            
+            # Close the file descriptor and reopen for writing
+            os.close(temp_fd)
+            
+            # Save PNG file to temporary location
+            with open(temp_path, 'wb') as f:
+                f.write(png_bytes)
+            
+            # Track for cleanup with timestamp
+            dingtalk_images[temp_path] = time.time()
+            
+            # Generate a unique filename for the URL (without the full temp path)
+            filename = os.path.basename(temp_path)
+            
+            # Get server URL for image access
+            from config import config
+            server_url = config.SERVER_URL
+            image_url = f"{server_url}/api/temp_images/{filename}"
+            
+            # Return markdown format for DingTalk
+            return jsonify({
+                'success': True,
+                'markdown': f"![{prompt}]({image_url})",
+                'image_url': image_url,
+                'filename': filename,
+                'prompt': prompt,
+                'language': language,
+                'graph_type': graph_type,
+                'timing': {
+                    'llm_time': round(llm_time, 3),
+                    'render_time': round(render_time, 3),
+                    'total_time': round(total_time, 3)
+                }
+            })
+            
+        except Exception as e:
+            logger.error(f"Failed to save DingTalk image: {e}")
+            return jsonify({'error': f'Failed to save image: {e}'}), 500
+            
+    except Exception as e:
+        logger.error(f"/generate_dingtalk failed: {e}", exc_info=True)
+        # If the error is about missing SVG, return a specific message
+        if isinstance(e, ValueError) and str(e).startswith("SVG element not found"):
+            return jsonify({'error': 'Failed to render the graph: SVG element not found. Please check your input or try a different prompt.'}), 400
+        return jsonify({'error': f'Failed to generate DingTalk image: {e}'}), 500
+
+
  
 
 @api.route('/update_style', methods=['POST'])
@@ -1117,10 +1498,46 @@ def get_timing_stats():
 def get_browser_context_pool_stats():
     """Browser context pool statistics endpoint (disabled for quick deployment)"""
     return jsonify({
-        'status': 'disabled',
-        'message': 'Browser context pool disabled for quick deployment - will be rewritten later',
-        'timestamp': time.time()
+        'message': 'Browser context pool statistics endpoint is disabled for quick deployment',
+        'status': 'disabled'
     })
+
+@api.route('/temp_images/<filename>', methods=['GET'])
+def serve_temp_dingtalk_image(filename):
+    """Serve temporary DingTalk images from the temporary directory."""
+    try:
+        # Find the image in our tracked temporary files
+        temp_dir = tempfile.gettempdir()
+        image_path = None
+        
+        # Look for the file in our tracked images
+        for tracked_path in dingtalk_images.keys():
+            if os.path.basename(tracked_path) == filename:
+                image_path = tracked_path
+                break
+        
+        if not image_path or not os.path.exists(image_path):
+            return jsonify({'error': 'Image not found or expired'}), 404
+        
+        # Check if the image has expired (older than 24 hours)
+        current_time = time.time()
+        creation_time = dingtalk_images.get(image_path, 0)
+        if current_time - creation_time > 24 * 60 * 60:  # 24 hours in seconds
+            # Remove expired image
+            try:
+                os.unlink(image_path)
+                dingtalk_images.pop(image_path, None)
+                logger.info(f"Removed expired image during access: {image_path}")
+            except OSError:
+                pass
+            return jsonify({'error': 'Image has expired'}), 410  # Gone
+        
+        # Serve the image file
+        return send_file(image_path, mimetype='image/png')
+        
+    except Exception as e:
+        logger.error(f"Error serving temporary image {filename}: {e}")
+        return jsonify({'error': 'Failed to serve image'}), 500
 
 @api.route('/clear_cache', methods=['POST'])
 def clear_cache():

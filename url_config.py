@@ -15,7 +15,9 @@ Version: 2.4.0
 # Core Graph Generation
 API_GENERATE_GRAPH = '/api/generate_graph'
 API_GENERATE_PNG = '/api/generate_png'
+API_GENERATE_DINGTALK = '/api/generate_dingtalk'
 API_UPDATE_STYLE = '/api/update_style'
+API_TEMP_IMAGES = '/api/temp_images'
 
 # ============================================================================
 # WEB ROUTES
@@ -58,7 +60,9 @@ def get_api_urls():
     return {
         'generate_graph': API_GENERATE_GRAPH,
         'generate_png': API_GENERATE_PNG,
-        'update_style': API_UPDATE_STYLE
+        'generate_dingtalk': API_GENERATE_DINGTALK,
+        'update_style': API_UPDATE_STYLE,
+        'temp_images': API_TEMP_IMAGES
     }
 
 def get_web_urls():

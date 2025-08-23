@@ -19,6 +19,7 @@
 - **🎨 Advanced Theming**: Modern themes via centralized style manager with easy customization
 - **🌐 Interactive**: Smooth D3.js interactions (hover, zoom/pan) and instant style updates
 - **📱 Export Options**: PNG export and shareable interactive HTML
+- **🔗 DingTalk Integration**: Special endpoint for DingTalk platform with markdown format and image URLs
 - **🌍 Multi-language**: English and Chinese support
 - **⚡ Real-time**: Instant preview and fast PNG generation
 
@@ -78,6 +79,65 @@
 
 5. **Open your browser**
    Navigate to `http://localhost:9527/debug` to access the web interface.
+
+## 🔗 DingTalk Integration
+
+MindGraph provides a special endpoint specifically designed for DingTalk platform integration. Unlike the regular PNG endpoint that returns binary image data, the DingTalk endpoint returns markdown format with image URLs.
+
+### DingTalk Endpoint
+
+```http
+POST /api/generate_dingtalk
+POST /generate_dingtalk  # Backward compatibility
+```
+
+### Request Example
+
+```json
+{
+  "prompt": "Compare traditional education vs online learning",
+  "language": "zh"
+}
+```
+
+### Response Format
+
+```json
+{
+  "success": true,
+  "markdown": "![Compare traditional education vs online learning](http://localhost:9527/api/temp_images/dingtalk_a1b2c3d4_1692812345.png)",
+  "image_url": "http://localhost:9527/api/temp_images/dingtalk_a1b2c3d4_1692812345.png",
+  "filename": "dingtalk_a1b2c3d4_1692812345.png",
+  "prompt": "Compare traditional education vs online learning",
+  "language": "zh",
+  "graph_type": "bubble_map",
+  "timing": {
+    "llm_time": 2.456,
+    "render_time": 1.234,
+    "total_time": 3.690
+  }
+}
+```
+
+### Usage in DingTalk
+
+The `markdown` field can be directly used in DingTalk markdown messages:
+
+```java
+// Example DingTalk integration
+OapiRobotSendRequest.Markdown markdown = new OapiRobotSendRequest.Markdown();
+markdown.setTitle("MindGraph Generated");
+markdown.setText("@" + userId + "  \n  " + response.getMarkdown());
+```
+
+### Key Benefits
+
+- **Markdown Ready**: Returns formatted markdown that works directly in DingTalk
+- **Image URLs**: Provides accessible image URLs instead of binary data
+- **Temporary Storage**: Images are automatically cleaned up after 24 hours
+- **Automatic Cleanup**: Built-in cleanup mechanism every 24 hours
+- **Performance Tracking**: Includes detailed timing information
+- **Backward Compatible**: Both `/api/generate_dingtalk` and `/generate_dingtalk` work
 
 ## 🖥️ Server Configuration
 
