@@ -156,8 +156,14 @@ class Config:
                 s.close()
                 host = actual_ip
             except Exception:
-                # Fallback to localhost if we can't determine IP
-                host = 'localhost'
+                # If we can't determine IP, we need to fail explicitly
+                # This prevents external clients from getting localhost URLs
+                logger.error("Failed to determine server IP address for external access")
+                logger.error("Please set EXTERNAL_HOST environment variable with your server's public IP")
+                raise RuntimeError(
+                    "Cannot determine server IP address for external access. "
+                    "Please set EXTERNAL_HOST environment variable with your server's public IP address."
+                )
         
         return f"http://{host}:{port}"
     

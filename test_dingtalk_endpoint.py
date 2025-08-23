@@ -13,8 +13,12 @@ import time
 def test_dingtalk_endpoint():
     """Test the DingTalk endpoint with a simple prompt."""
     
-    # Test configuration
-    base_url = "http://localhost:9527"
+    # Test configuration - use dynamic server URL
+    try:
+        from config import config
+        base_url = config.SERVER_URL
+    except ImportError:
+        base_url = "http://localhost:9527"  # Fallback for testing
     endpoint = "/api/generate_dingtalk"
     
     # Test data
@@ -94,7 +98,12 @@ def test_dingtalk_endpoint():
 def test_backward_compatibility():
     """Test backward compatibility route (without /api prefix)."""
     
-    base_url = "http://localhost:9527"
+    # Test configuration - use dynamic server URL
+    try:
+        from config import config
+        base_url = config.SERVER_URL
+    except ImportError:
+        base_url = "http://localhost:9527"  # Fallback for testing
     endpoint = "/generate_dingtalk"  # Without /api prefix
     
     print(f"Testing backward compatibility: {base_url}{endpoint}")

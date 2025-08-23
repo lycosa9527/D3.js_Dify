@@ -241,12 +241,17 @@ def log_response(response):
 # Configure CORS based on environment (development vs production)
 if config.DEBUG:
     # Development: Allow multiple origins with restrictions
-    CORS(app, origins=['http://localhost:9527', 'http://127.0.0.1:9527', 'http://localhost:3000'])
+    server_url = config.SERVER_URL
+    CORS(app, origins=[
+        server_url,  # Use dynamic server URL
+        'http://localhost:3000',  # Keep for frontend development
+        'http://127.0.0.1:9527'  # Keep for local testing
+    ])
 else:
     # Production: Restrict to specific origins
+    server_url = config.SERVER_URL
     CORS(app, origins=[
-        'http://localhost:9527',
-        'http://127.0.0.1:9527'
+        server_url,  # Use dynamic server URL
         # Add production domains here
     ])
 
@@ -548,11 +553,9 @@ def open_browser_debug(host, port):
     - Non-blocking browser opening
     """
     try:
-        # Determine the correct URL based on host configuration
-        if host == '0.0.0.0':
-            url = f"http://localhost:{port}/debug"
-        else:
-            url = f"http://{host}:{port}/debug"
+        # Use dynamic server URL for all operations
+        server_url = config.SERVER_URL
+        url = f"{server_url}/debug"
         
         def open_browser():
             """Open browser after confirming server is ready."""
@@ -560,8 +563,9 @@ def open_browser_debug(host, port):
             max_attempts = 15
             for attempt in range(max_attempts):
                 try:
-                    # Check if server is responding
-                    response = requests.get(f"http://localhost:{port}/status", timeout=2)
+                    # Check if server is responding using dynamic URL
+                    status_url = f"{server_url}/status"
+                    response = requests.get(status_url, timeout=2)
                     if response.status_code == 200:
                         webbrowser.open(url)
                         return True  # Success
@@ -602,19 +606,10 @@ def print_banner(host, port):
 """
     print(banner)
     
-    # Display application URLs
-    if host == '0.0.0.0':
-        primary_url = f"http://localhost:{port}"
-        local_ip = get_local_ip()
-        network_url = f"http://{local_ip}:{port}"
-        print(f"🌐 Application URLs:")
-        print(f"   Local: {primary_url}")
-        print(f"   Network: {network_url}")
-    else:
-        primary_url = f"http://{host}:{port}"
-        print(f"🌐 Application URL: {primary_url}")
-    
-    print(f"\n🌐 Open in browser: {primary_url}\n")
+    # Display application URLs using dynamic server URL
+    server_url = config.SERVER_URL
+    print(f"🌐 Application URL: {server_url}")
+    print(f"\n🌐 Open in browser: {server_url}\n")
 
 def print_setup_instructions():
     """
@@ -648,10 +643,10 @@ If you are seeing this message, you may be missing required dependencies.
 5. Start the Flask app:
    python app.py
 
-6. Open your browser and visit: http://localhost:9527
+6. Open your browser and visit: {config.SERVER_URL}
 
     🐳 Option 2: Docker deployment (removed - will be added back later)
-4. Open your browser and visit: http://localhost:9527
+4. Open your browser and visit: {config.SERVER_URL}
 
 📋 Manual Dependency Check
 

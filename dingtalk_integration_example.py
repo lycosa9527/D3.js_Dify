@@ -16,13 +16,19 @@ import time
 class DingTalkMindGraphBot:
     """DingTalk bot that integrates with MindGraph for image generation."""
     
-    def __init__(self, mindgraph_url="http://localhost:9527"):
+    def __init__(self, mindgraph_url=None):
         """
         Initialize the DingTalk MindGraph bot.
         
         Args:
-            mindgraph_url: Base URL of the MindGraph server
+            mindgraph_url: Base URL of the MindGraph server (auto-detected if None)
         """
+        if mindgraph_url is None:
+            try:
+                from config import config
+                mindgraph_url = config.SERVER_URL
+            except ImportError:
+                mindgraph_url = "http://localhost:9527"  # Fallback for testing
         self.mindgraph_url = mindgraph_url.rstrip('/')
         self.dingtalk_webhook = None  # Set this to your DingTalk webhook URL
         
