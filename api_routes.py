@@ -1300,10 +1300,13 @@ def generate_dingtalk():
                         else:
                             width, height = 1000, 700
                         
+                        logger.info(f"Setting viewport size: {width}x{height} for graph type: {graph_type}")
                         await page.set_viewport_size({'width': width, 'height': height})
                         
                         # Load the HTML content
+                        logger.info(f"Loading HTML content for {graph_type} (length: {len(html_content)} chars)")
                         await page.set_content(html_content, wait_until='networkidle')
+                        logger.info("HTML content loaded successfully")
                         
                         # Wait for the graph to be rendered
                         try:
@@ -1315,14 +1318,30 @@ def generate_dingtalk():
                             
                         except Exception as e:
                             logger.warning(f"Timeout waiting for SVG: {e}")
-                            # Continue anyway - might still have content
+                            # Try to continue - check if SVG exists anyway
+                            try:
+                                svg_element = await page.query_selector('svg')
+                                if not svg_element:
+                                    logger.error("SVG element not found after timeout")
+                                    raise ValueError("SVG element not found")
+                            except Exception as svg_error:
+                                logger.error(f"SVG element check failed: {svg_error}")
+                                raise ValueError("SVG element not found")
                         
-                        # Capture PNG
-                        png_bytes = await page.screenshot(
-                            type='png',
-                            full_page=True,
-                            optimize_for_speed=True
-                        )
+                        # Capture PNG - handle different Playwright versions
+                        try:
+                            # Try with optimize_for_speed for newer versions
+                            png_bytes = await page.screenshot(
+                                type='png',
+                                full_page=True,
+                                optimize_for_speed=True
+                            )
+                        except TypeError:
+                            # Fallback for older Playwright versions
+                            png_bytes = await page.screenshot(
+                                type='png',
+                                full_page=True
+                            )
                         
                         return png_bytes
                         
