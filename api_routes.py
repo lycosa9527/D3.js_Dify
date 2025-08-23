@@ -1215,142 +1215,452 @@ def generate_dingtalk():
                 renderer_scripts = '\n            '.join(module_script_tags) if module_script_tags else ""
                 
                 # Log what modules are being loaded for debugging
-                logger.info(f"Loading {len(module_contents)} modules for {graph_type}: {list(module_contents.keys())}")
+                logger.info(f"Loading modules for {graph_type}: {[name for name in module_contents.keys() if name not in ['theme-config', 'style-manager']]}")
+                logger.info(f"Generated {len(module_script_tags)} script tags")
                 
-                # Create HTML content with the spec and renderer
-                html_content = f"""<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>MindGraph - {graph_type}</title>
-    <style>
-        body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; background: white; }}
-        .graph-container {{ width: 100%; height: 100vh; }}
-        .loading {{ text-align: center; padding: 50px; font-size: 18px; color: #666; }}
-        .error {{ color: red; text-align: center; padding: 50px; }}
-    </style>
-</head>
-<body>
-    <div class="graph-container">
-        <div class="loading">Generating {graph_type}...</div>
-    </div>
-    
-    <script>
-        // Theme configuration
-        {theme_config}
-        
-        // Style manager
-        {style_manager}
-        
-        // Graph data
-        const graphSpec = {json.dumps(spec, ensure_ascii=False)};
-        const graphType = '{graph_type}';
-        
-        // Renderer scripts
-        {renderer_scripts}
-        
-        // Initialize rendering
-        document.addEventListener('DOMContentLoaded', function() {{
-            try {{
-                // Wait for renderer to be available
-                if (typeof window.renderGraph === 'function') {{
-                    window.renderGraph(graphSpec, graphType);
-                }} else {{
-                    // Fallback: wait a bit for dynamic loading
-                    setTimeout(() => {{
-                        if (typeof window.renderGraph === 'function') {{
-                            window.renderGraph(graphSpec, graphType);
-                        }} else {{
-                            document.querySelector('.graph-container').innerHTML = 
-                                '<div class="error">Failed to load renderer for {graph_type}</div>';
-                        }}
-                    }}, 1000);
-                }}
-            }} catch (error) {{
-                document.querySelector('.graph-container').innerHTML = 
-                    '<div class="error">Rendering error: ' + error.message + '</div>';
-            }}
-        }});
-    </script>
-</body>
-</html>"""
+                # Debug: Log the actual script content being generated
+                for i, script_tag in enumerate(module_script_tags):
+                    logger.info(f"Script tag {i+1}: {script_tag[:100]}...")  # First 100 chars
                 
-                # Use Playwright to render the HTML and capture PNG
-                async with async_playwright() as p:
-                    browser = await p.chromium.launch(
-                        headless=True,
-                        args=['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
-                    )
-                    
-                    try:
-                        page = await browser.new_page()
-                        
-                        # Set viewport size based on graph type
-                        if graph_type in ['concept_map', 'mind_map']:
-                            width, height = 1200, 800
-                        elif graph_type in ['flow_map', 'multi_flow_map']:
-                            width, height = 1400, 900
-                        elif graph_type == 'brace_map':
-                            # Use dimensions from agent if available
-                            if '_optimal_dimensions' in spec:
-                                width = spec['_optimal_dimensions'].get('width', 1200)
-                                height = spec['_optimal_dimensions'].get('height', 800)
-                            else:
-                                width, height = 1200, 800
-                        else:
-                            width, height = 1000, 700
-                        
-                        logger.info(f"Setting viewport size: {width}x{height} for graph type: {graph_type}")
-                        await page.set_viewport_size({'width': width, 'height': height})
-                        
-                        # Load the HTML content
-                        logger.info(f"Loading HTML content for {graph_type} (length: {len(html_content)} chars)")
-                        await page.set_content(html_content, wait_until='networkidle')
-                        logger.info("HTML content loaded successfully")
-                        
-                        # Wait for the graph to be rendered
-                        try:
-                            # Wait for SVG element to appear
-                            await page.wait_for_selector('svg', timeout=30000)
-                            
-                            # Additional wait for rendering to complete
-                            await page.wait_for_timeout(2000)
-                            
-                        except Exception as e:
-                            logger.warning(f"Timeout waiting for SVG: {e}")
-                            # Try to continue - check if SVG exists anyway
-                            try:
-                                svg_element = await page.query_selector('svg')
-                                if not svg_element:
-                                    logger.error("SVG element not found after timeout")
-                                    raise ValueError("SVG element not found")
-                            except Exception as svg_error:
-                                logger.error(f"SVG element check failed: {svg_error}")
-                                raise ValueError("SVG element not found")
-                        
-                        # Capture PNG - handle different Playwright versions
-                        try:
-                            # Try with optimize_for_speed for newer versions
-                            png_bytes = await page.screenshot(
-                                type='png',
-                                full_page=True,
-                                optimize_for_speed=True
-                            )
-                        except TypeError:
-                            # Fallback for older Playwright versions
-                            png_bytes = await page.screenshot(
-                                type='png',
-                                full_page=True
-                            )
-                        
-                        return png_bytes
-                        
-                    finally:
-                        await browser.close()
-                        
+                logger.info(f"Total HTML size will be approximately: {len(theme_config) + len(style_manager) + sum(len(tag) for tag in module_script_tags)} chars")
+                
             except Exception as e:
-                logger.error(f"Error in render_svg_to_png: {e}")
-                raise
+                logger.error(f"Failed to load modular JavaScript for {graph_type}: {e}")
+                # NO FALLBACK - if modular system fails, show error
+                logger.error(f"Modular system failed for {graph_type}, no fallback available")
+                raise ValueError(f"Failed to load required JavaScript modules for {graph_type}")
+            
+            # Log spec data summary for debugging
+            if isinstance(spec, dict):
+                spec_keys = list(spec.keys())
+                svg_info = ""
+                if 'svg_data' in spec and isinstance(spec['svg_data'], dict):
+                    svg_keys = list(spec['svg_data'].keys())
+                    element_count = len(spec['svg_data'].get('elements', [])) if 'elements' in spec['svg_data'] else 0
+                    svg_info = f", svg_data: {svg_keys}, elements: {element_count}"
+                logger.info(f"Spec data: {spec_keys}{svg_info}")
+            else:
+                logger.info("Spec data: Not a dict")
+            
+            # Calculate optimized dimensions for different graph types
+            dimensions = config.get_d3_dimensions()
+            
+            if graph_type == 'bridge_map' and spec and 'analogies' in spec:
+                num_analogies = len(spec['analogies'])
+                min_width_per_analogy = 120
+                min_padding = 40
+                content_width = (num_analogies * min_width_per_analogy) + ((num_analogies - 1) * 60)
+                optimal_width = max(content_width + (2 * min_padding), 600)
+                optimal_height = max(90 + (2 * min_padding), 200)  # 90px for text + lines
+                
+                dimensions = {
+                    'baseWidth': optimal_width,
+                    'baseHeight': optimal_height,
+                    'padding': min_padding,
+                    'width': optimal_width,
+                    'height': optimal_height,
+                    'topicFontSize': dimensions.get('topicFontSize', 26),
+                    'charFontSize': dimensions.get('charFontSize', 22)
+                }
+            elif graph_type == 'brace_map' and spec:
+                # Check for enhanced spec format first (new format)
+                optimal_dims = spec.get('_optimal_dimensions', {})
+                svg_data = spec.get('_svg_data', {})
+                
+                # Use enhanced format dimensions if available
+                if optimal_dims and optimal_dims.get('width') and optimal_dims.get('height'):
+                    dimensions = {
+                        'baseWidth': optimal_dims['width'],
+                        'baseHeight': optimal_dims['height'],
+                        'padding': 50,
+                        'width': optimal_dims['width'],
+                        'height': optimal_dims['height'],
+                        'topicFontSize': dimensions.get('topicFontSize', 20),
+                        'partFontSize': dimensions.get('partFontSize', 16),
+                        'subpartFontSize': dimensions.get('subpartFontSize', 14)
+                    }
+                    logger.info(f"Using enhanced spec optimal dimensions: {optimal_dims['width']}x{optimal_dims['height']}")
+                # Legacy format fallback
+                elif spec.get('success') and svg_data and 'width' in svg_data and 'height' in svg_data:
+                    dimensions = {
+                        'baseWidth': svg_data['width'],
+                        'baseHeight': svg_data['height'],
+                        'padding': 50,
+                        'width': svg_data['width'],
+                        'height': svg_data['height'],
+                        'topicFontSize': dimensions.get('topicFontSize', 20),
+                        'partFontSize': dimensions.get('partFontSize', 16),
+                        'subpartFontSize': dimensions.get('subpartFontSize', 14)
+                    }
+                    logger.info(f"Using legacy format optimal dimensions: {svg_data['width']}x{svg_data['height']}")
+                else:
+                    # Fallback to default dimensions if agent data is not available
+                    dimensions = {
+                        'baseWidth': 800,
+                        'baseHeight': 600,
+                        'padding': 50,
+                        'width': 800,
+                        'height': 600,
+                        'topicFontSize': dimensions.get('topicFontSize', 20),
+                        'partFontSize': dimensions.get('partFontSize', 16),
+                        'subpartFontSize': dimensions.get('subpartFontSize', 14)
+                    }
+                    logger.warning("Agent dimensions not available, using fallback dimensions")
+            elif graph_type in ('multi_flow_map', 'flow_map', 'tree_map', 'concept_map') and isinstance(spec, dict):
+                try:
+                    rd = spec.get('_recommended_dimensions') or {}
+                    if rd:
+                        dimensions = {
+                            'baseWidth': rd.get('baseWidth', dimensions.get('baseWidth', 900)),
+                            'baseHeight': rd.get('baseHeight', dimensions.get('baseHeight', 500)),
+                            'padding': rd.get('padding', dimensions.get('padding', 40)),
+                            'width': rd.get('width', rd.get('baseWidth', dimensions.get('baseWidth', 900))),
+                            'height': rd.get('height', rd.get('baseHeight', dimensions.get('baseHeight', 500))),
+                            'topicFontSize': dimensions.get('topicFontSize', 18),
+                            'charFontSize': dimensions.get('charFontSize', 14)
+                        }
+                except Exception as e:
+                    logger.warning(f"Failed to apply recommended dimensions: {e}")
+            
+            # Read local D3.js content for embedding in PNG generation
+            d3_js_path = os.path.join(os.path.dirname(__file__), 'static', 'js', 'd3.min.js')
+            try:
+                with open(d3_js_path, 'r', encoding='utf-8') as f:
+                    d3_js_content = f.read()
+                logger.info(f"Local D3.js loaded for PNG generation ({len(d3_js_content)} bytes)")
+                d3_script_tag = f'<script>{d3_js_content}</script>'
+            except Exception as e:
+                logger.error(f"Failed to load local D3.js: {e}")
+                raise RuntimeError(f"Local D3.js library not available at {d3_js_path}. Please ensure the D3.js bundle is properly installed.")
+            
+            html = f'''
+            <html><head>
+            <meta charset="utf-8">
+            {d3_script_tag}
+            <style>
+                body {{ margin:0; background:#fff; }}
+                #d3-container {{ 
+                    width: 100%; 
+                    height: 100vh; 
+                    display: block; 
+                    background: #f0f0f0; 
+                }}
+            </style>
+            </head><body>
+            <div id="d3-container"></div>
+            
+            <!-- Theme Configuration -->
+            <script>
+            {theme_config}
+            </script>
+            
+            <!-- Style Manager -->
+            <script>
+            {style_manager}
+            </script>
+            
+            <!-- Modular D3 Renderers (Loaded in dependency order) -->
+            {renderer_scripts}
+            
+            <!-- Main Rendering Logic -->
+            <script>
+            console.log("Page loaded, waiting for D3.js...");
+            console.log("Debug: Checking module availability...");
+            
+            // Debug: Check what modules are loaded
+            setTimeout(() => {{
+                console.log("Debug: Module availability check:");
+                console.log("  - renderTreeMap:", typeof renderTreeMap);
+                console.log("  - TreeRenderer:", typeof TreeRenderer);
+                console.log("  - MindGraphUtils:", typeof MindGraphUtils);
+                console.log("  - addWatermark:", typeof addWatermark);
+                console.log("  - styleManager:", typeof styleManager);
+                console.log("  - renderGraph:", typeof renderGraph);
+                
+                if (window.TreeRenderer) {{
+                    console.log("  - TreeRenderer.renderTreeMap:", typeof window.TreeRenderer.renderTreeMap);
+                }}
+                if (window.MindGraphUtils) {{
+                    console.log("  - MindGraphUtils.addWatermark:", typeof window.MindGraphUtils.addWatermark);
+                }}
+            }}, 1000);
+            
+            // Wait for D3.js to load
+            function waitForD3() {{
+                if (typeof d3 !== "undefined") {{
+                    console.log("D3.js loaded, starting rendering...");
+                    try {{
+                        window.spec = {json.dumps(spec, ensure_ascii=False)};
+                        window.graph_type = "{graph_type}";
+                        
+                        // Get theme using centralized configuration
+                        let theme;
+                        let backendTheme;
+                        if (typeof getD3Theme === "function") {{
+                            theme = getD3Theme(graph_type);
+                            console.log("Using centralized theme configuration");
+                        }} else {{
+                            // Fallback to style manager
+                            const d3Theme = {json.dumps(config.get_d3_theme(), ensure_ascii=False)};
+                            theme = d3Theme;
+                            console.log("Using style manager theme");
+                        }}
+                        const watermarkConfig = {json.dumps(config.get_watermark_config(), ensure_ascii=False)};
+                        backendTheme = {{...theme, ...watermarkConfig}};
+                        window.dimensions = {json.dumps(dimensions, ensure_ascii=False)};
+                        
+                        console.log("Rendering graph:", window.graph_type, window.spec);
+                        console.log("Style manager loaded:", typeof styleManager);
+                        console.log("Backend theme:", backendTheme);
+                        
+                        // Ensure style manager is available
+                        if (typeof styleManager === "undefined") {{
+                            console.error("Style manager not loaded!");
+                            document.body.innerHTML += "<div style=\\"color: red; padding: 20px;\\">Style manager not loaded!</div>";
+                            throw new Error("Style manager not available");
+                        }} else {{
+                            console.log("Style manager is available");
+                        }}
+                        
+                        // Use agent renderer for brace maps
+                        if (window.graph_type === "brace_map") {{
+                            console.log("Using brace map agent renderer");
+                            console.log("Debug: window.spec:", window.spec);
+                            console.log("Debug: spec keys:", Object.keys(window.spec || {{}}));
+                            
+                            // Handle both enhanced format (with original structure) and legacy formats
+                            const hasValidSpec = window.spec && (
+                                (window.spec.topic && Array.isArray(window.spec.parts)) || // Enhanced format
+                                window.spec.success || // Legacy format
+                                window.spec.data || window.spec.svg_data || window.spec.layout_data
+                            );
+                            
+                            console.log("Debug: hasValidSpec:", hasValidSpec);
+                            console.log("Debug: renderBraceMap available:", typeof renderBraceMap);
+                            console.log("Debug: BraceRenderer available:", typeof window.BraceRenderer);
+                            
+                            if (hasValidSpec) {{
+                                if (typeof renderBraceMap === "function") {{
+                                    console.log("Calling global renderBraceMap function");
+                                    try {{
+                                        renderBraceMap(window.spec, backendTheme, window.dimensions);
+                                        console.log("renderBraceMap completed successfully");
+                                    }} catch (error) {{
+                                        console.error("Error in renderBraceMap:", error);
+                                        document.body.innerHTML += "<div style=\\"color: red; padding: 20px;\\">Render error: " + error.message + "</div>";
+                                    }}
+                                }} else if (typeof window.BraceRenderer !== "undefined" && typeof window.BraceRenderer.renderBraceMap === "function") {{
+                                    console.log("Calling BraceRenderer.renderBraceMap function");
+                                    try {{
+                                        window.BraceRenderer.renderBraceMap(window.spec, backendTheme, window.dimensions);
+                                        console.log("BraceRenderer.renderBraceMap completed successfully");
+                                    }} catch (error) {{
+                                        console.error("Error in BraceRenderer.renderBraceMap:", error);
+                                        document.body.innerHTML += "<div style=\\"color: red; padding: 20px;\\">Render error: " + error.message + "</div>";
+                                    }}
+                                }} else {{
+                                    console.error("renderBraceMap function not available");
+                                    document.body.innerHTML += "<div style=\\"color: red; padding: 20px;\\">Brace map renderer not loaded</div>";
+                                }}
+                            }} else {{
+                                console.error("Invalid brace map specification");
+                                document.body.innerHTML += "<div style=\\"color: red; padding: 20px;\\">Invalid brace map specification</div>";
+                            }}
+                        }} else if (window.graph_type === "flow_map") {{
+                            console.log("Using flow map renderer directly");
+                            if (typeof renderFlowMap === "function") {{
+                                renderFlowMap(window.spec, backendTheme, window.dimensions);
+                            }} else {{
+                                console.error("renderFlowMap function not available");
+                                document.body.innerHTML += "<div style=\\"color: red; padding: 20px;\\">Flow map renderer not loaded</div>";
+                            }}
+                        }} else {{
+                            renderGraph(window.graph_type, window.spec, backendTheme, window.dimensions);
+                        }}
+                        
+                        console.log("Graph rendering completed");
+                        
+                        // Wait a moment for SVG to be created
+                        setTimeout(() => {{
+                            const svg = document.querySelector("svg");
+                            if (svg) {{
+                                console.log("SVG found with dimensions:", svg.getAttribute("width"), "x", svg.getAttribute("height"));
+                            }} else {{
+                                console.error("No SVG element found after rendering");
+                                document.body.innerHTML += "<div style=\\"color: red; padding: 20px;\\">No SVG created after rendering</div>";
+                            }}
+                        }}, 1000);
+                    }} catch (error) {{
+                        console.error("Render error:", error);
+                        document.body.innerHTML += "<div style=\\"color: red; padding: 20px;\\">Render error: " + error.message + "</div>";
+                    }}
+                }} else {{
+                    setTimeout(waitForD3, 100);
+                }}
+            }}
+            waitForD3();
+            </script>
+            </body></html>
+            '''
+            # Get browser context from pool for optimal performance
+            # According to Playwright best practices:
+            # - Each isolated operation should have its own browser context
+            # - Contexts cannot cross event loop boundaries
+            # - For PNG generation, create a fresh context each time
+            # - Reference: https://playwright.dev/docs/browser-contexts#isolation
+            
+            logger.info("DEBUG: Creating fresh browser context for PNG generation (following Playwright isolation principles)")
+            
+            # Create a fresh browser instance and context for this PNG generation
+            # This ensures proper isolation and event loop compatibility
+            from playwright.async_api import async_playwright
+            playwright = await async_playwright().start()
+            
+            browser = await playwright.chromium.launch()
+            context = await browser.new_context(
+                viewport={'width': 1920, 'height': 1080},
+                user_agent='MindGraph PNG Generator/1.0',
+                java_script_enabled=True,
+                ignore_https_errors=True
+            )
+            
+            logger.info(f"DEBUG: Fresh context created - type: {type(context)}, id: {id(context)}")
+            
+            try:
+                # Use the fresh context for PNG generation
+                page = await context.new_page()
+                
+                # Set timeout to 60 seconds for all content
+                page.set_default_timeout(60000)  # 60 seconds default
+                page.set_default_navigation_timeout(60000)
+                
+                # Set up console and error logging BEFORE loading content
+                console_messages = []
+                page_errors = []
+                
+                page.on("console", lambda msg: console_messages.append(f"{msg.type}: {msg.text}"))
+                page.on("pageerror", lambda err: page_errors.append(str(err)))
+                
+                # Set timeout and log HTML size if large
+                html_size = len(html)
+                timeout_ms = 60000  # 60 seconds for all content
+                if html_size > 100000:  # Log if HTML is very large
+                    logger.info(f"Large HTML content: {html_size} characters, setting timeout to {timeout_ms}ms")
+                
+                await page.set_content(html, timeout=timeout_ms)
+                
+                # Wait for rendering and check for console errors
+                logger.info("Waiting for initial rendering...")
+                await asyncio.sleep(3.0)
+                
+                # Log console messages and errors (consolidated)
+                if console_messages:
+                    logger.info(f"Browser console messages: {len(console_messages)}")
+                    # Log the actual console messages for debugging
+                    for i, msg in enumerate(console_messages[-10:]):  # Last 10 messages
+                        logger.info(f"Console {i+1}: {msg}")
+                if page_errors:
+                    logger.error(f"Browser errors: {len(page_errors)}")
+                    for i, error in enumerate(page_errors):
+                        logger.error(f"Browser Error {i+1}: {error}")
+                
+                # Wait for rendering to complete
+                logger.info("Waiting for rendering to complete...")
+                await asyncio.sleep(4.0)  # Combined wait time
+                
+                # Check what functions are actually available in the browser
+                try:
+                    function_check = await page.evaluate("""
+                        () => {
+                            const functions = {};
+                            functions.renderTreeMap = typeof renderTreeMap;
+                            functions.TreeRenderer = typeof TreeRenderer;
+                            functions.MindGraphUtils = typeof MindGraphUtils;
+                            functions.addWatermark = typeof addWatermark;
+                            functions.styleManager = typeof styleManager;
+                            functions.d3 = typeof d3;
+                            functions.renderGraph = typeof renderGraph;
+                            
+                            // Check if specific objects exist
+                            if (window.TreeRenderer) {
+                                functions.TreeRenderer_renderTreeMap = typeof window.TreeRenderer.renderTreeMap;
+                            }
+                            if (window.MindGraphUtils) {
+                                functions.MindGraphUtils_addWatermark = typeof window.MindGraphUtils.addWatermark;
+                            }
+                            
+                            return functions;
+                        }
+                    """)
+                    logger.info(f"Function availability check: {function_check}")
+                except Exception as e:
+                    logger.error(f"Failed to check function availability: {e}")
+                
+                # Wait for SVG element to be created with timeout
+                try:
+                    element = await page.wait_for_selector("svg", timeout=10000)
+                    logger.info("SVG element found successfully")
+                except Exception as e:
+                    logger.error(f"Timeout waiting for SVG element: {e}")
+                    element = await page.query_selector("svg")  # Try one more time
+                
+                # Check if SVG exists and has content
+                if element is None:
+                    logger.error("SVG element not found in rendered page.")
+                    
+                    # Check if d3-container has any content
+                    container = await page.query_selector("#d3-container")
+                    if container:
+                        container_content = await container.inner_html()
+                        logger.error(f"Container content: {container_content[:500]}...")
+                    else:
+                        logger.error("d3-container element not found")
+                    
+                    # Log page content for debugging
+                    page_content = await page.content()
+                    logger.error(f"Page content: {page_content[:1000]}...")
+                    
+                    # Check if any JavaScript functions are available
+                    try:
+                        d3_available = await page.evaluate("typeof d3 !== \"undefined\"")
+                        style_manager_available = await page.evaluate("typeof styleManager !== \"undefined\"")
+                        render_graph_available = await page.evaluate("typeof renderGraph !== \"undefined\"")
+                        
+                        logger.error(f"JavaScript availability - D3: {d3_available}, StyleManager: {style_manager_available}, renderGraph: {render_graph_available}")
+                    except Exception as e:
+                        logger.error(f"Could not check JavaScript availability: {e}")
+                    
+                    raise ValueError("SVG element not found. The graph could not be rendered.")
+                
+                # Check SVG dimensions
+                svg_width = await element.get_attribute('width')
+                svg_height = await element.get_attribute('height')
+                logger.info(f"SVG dimensions: width={svg_width}, height={svg_height}")
+                
+                # Ensure element is visible before screenshot
+                await element.scroll_into_view_if_needed()
+                await page.wait_for_timeout(1000)  # Wait for any animations to complete
+                
+                png_bytes = await element.screenshot(omit_background=False, timeout=60000)
+                return png_bytes
+            finally:
+                # Clean up resources properly
+                logger.info("DEBUG: Cleaning up PNG generation resources")
+                try:
+                    if 'page' in locals():
+                        await page.close()
+                        logger.info("DEBUG: Page closed")
+                    if 'context' in locals():
+                        await context.close()
+                        logger.info("DEBUG: Context closed")
+                    if 'browser' in locals():
+                        await browser.close()
+                        logger.info("DEBUG: Browser closed")
+                    if 'playwright' in locals():
+                        await playwright.stop()
+                        logger.info("DEBUG: Playwright stopped")
+                except Exception as cleanup_error:
+                    logger.warning(f"DEBUG: Error during cleanup: {cleanup_error}")
         
         # Execute the async rendering
         loop = asyncio.new_event_loop()
