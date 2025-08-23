@@ -1718,20 +1718,9 @@ def generate_dingtalk():
             server_url = config.SERVER_URL
             image_url = f"{server_url}/api/temp_images/{filename}"
             
-            # Return markdown format for DingTalk
+            # Return simplified markdown format for DingTalk
             return jsonify({
-                'success': True,
-                'markdown': f"![{prompt}]({image_url})",
-                'image_url': image_url,
-                'filename': filename,
-                'prompt': prompt,
-                'language': language,
-                'graph_type': graph_type,
-                'timing': {
-                    'llm_time': round(llm_time, 3),
-                    'render_time': round(render_time, 3),
-                    'total_time': round(total_time, 3)
-                }
+                'markdown': f"![{prompt}]({image_url})"
             })
             
         except Exception as e:
