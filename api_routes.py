@@ -1721,8 +1721,14 @@ def generate_dingtalk():
             server_url = config.SERVER_URL
             image_url = f"{server_url}/api/temp_images/{filename}"
             
-            # Return raw markdown format for DingTalk (no JSON wrapper)
-            return f"![]({image_url})"
+            # Return DingTalk API format with markdown structure
+            return jsonify({
+                "msgtype": "markdown",
+                "markdown": {
+                    "title": f"{prompt}",
+                    "text": f"![]({image_url})"
+                }
+            })
             
         except Exception as e:
             logger.error(f"Failed to save DingTalk image: {e}")
