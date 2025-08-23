@@ -1806,7 +1806,8 @@ def generate_dingtalk():
             title = f"MindGraph: {prompt[:50]}{'...' if len(prompt) > 50 else ''}"
             
             # Create markdown text with the image and additional information
-            markdown_text = f"![MindGraph生成的图表]({image_url})\n\n"
+            # Format: ![图片描述](图片URL)
+            markdown_text = f"![{prompt[:100]}]({image_url})\n\n"
             markdown_text += f"**提示词**: {prompt}\n\n"
             markdown_text += f"**图表类型**: {graph_type}\n\n"
             markdown_text += f"**生成时间**: {total_time:.2f}秒"
