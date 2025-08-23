@@ -1127,30 +1127,15 @@ def generate_dingtalk():
     data = request.json
     valid, msg = validate_request_data(data, ['prompt'])
     if not valid:
-        return jsonify({
-            "msgtype": "text",
-            "text": {
-                "content": f"❌ 请求验证失败：{msg}"
-            }
-        }), 400
+        return f"❌ 请求验证失败：{msg}", 400
     
     prompt = sanitize_prompt(data['prompt'])
     if not prompt:
-        return jsonify({
-            "msgtype": "text",
-            "text": {
-                "content": "❌ 提示词无效或为空"
-            }
-        }), 400
+        return "❌ 提示词无效或为空", 400
     
     language = data.get('language', 'zh')
     if not isinstance(language, str) or language not in ['zh', 'en']:
-        return jsonify({
-            "msgtype": "text",
-            "text": {
-                "content": "❌ 语言无效。必须是 'zh' 或 'en'"
-            }
-        }), 400
+        return "❌ 语言无效。必须是 'zh' 或 'en'", 400
     
     logger.info(f"DingTalk /generate_dingtalk: prompt={prompt!r}, language={language!r}")
     
@@ -1169,34 +1154,19 @@ def generate_dingtalk():
         logger.info(f"LLM processing completed in {llm_time:.3f}s")
     except Exception as e:
         logger.error(f"Agent workflow failed: {e}")
-        return jsonify({
-            "msgtype": "text",
-            "text": {
-                "content": f"❌ 图表规格生成失败：{str(e)}"
-            }
-        }), 500
+        return f"❌ 图表规格生成失败：{str(e)}", 500
     
     # Validate the generated spec before processing
     from graph_specs import DIAGRAM_VALIDATORS
     # Surface generation error without changing type
     if isinstance(spec, dict) and spec.get('error'):
-        return jsonify({
-            "msgtype": "text",
-            "text": {
-                "content": f"❌ 图表规格验证失败：{spec.get('error')}"
-            }
-        }), 400
+        return f"❌ 图表规格验证失败：{spec.get('error')}", 400
     if graph_type in DIAGRAM_VALIDATORS:
         validate_fn = DIAGRAM_VALIDATORS[graph_type]
         valid, msg = validate_fn(spec)
         if not valid:
             logger.warning(f"Generated invalid spec for {graph_type}: {msg}")
-            return jsonify({
-                "msgtype": "text",
-                "text": {
-                    "content": f"❌ 图表规格验证失败：{msg}"
-                }
-            }), 400
+            return f"❌ 图表规格验证失败：{msg}", 400
     else:
         logger.warning(f"No validator found for diagram type: {graph_type}")
     
@@ -1801,26 +1771,12 @@ def generate_dingtalk():
             image_url = f"{server_url}/api/temp_images/{filename}"
             logger.info(f"Generated image URL: {image_url}")
             
-            # Create simplified markdown text with just the image
-            markdown_text = f"![图表]({image_url})"
-            
-            # Return DingTalk markdown format with required title and text fields
-            return jsonify({
-                "msgtype": "markdown",
-                "markdown": {
-                    "title": f"MindGraph: {prompt[:50]}...",
-                    "text": markdown_text
-                }
-            })
+            # Return just the raw image URL as plain text
+            return image_url
             
         except Exception as e:
             logger.error(f"Failed to save DingTalk image: {e}")
-            return jsonify({
-                "msgtype": "text",
-                "text": {
-                    "content": f"❌ 图片保存失败：{str(e)}"
-                }
-            }), 500
+            return f"❌ 图片保存失败：{str(e)}", 500
             
     except Exception as e:
         logger.error(f"/generate_dingtalk failed: {e}", exc_info=True)
@@ -1830,13 +1786,8 @@ def generate_dingtalk():
         else:
             error_msg = f"❌ 图表生成失败：{str(e)}"
         
-        # Return DingTalk-compatible error format
-        return jsonify({
-            "msgtype": "text",
-            "text": {
-                "content": error_msg
-            }
-        }), 500
+        # Return plain text error message
+        return error_msg, 500
 
 
  
