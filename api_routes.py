@@ -1801,17 +1801,14 @@ def generate_dingtalk():
             image_url = f"{server_url}/api/temp_images/{filename}"
             logger.info(f"Generated image URL: {image_url}")
             
-            # Create markdown text with the image and additional information
-            # Format: ![图片描述](图片URL)
-            markdown_text = f"![{prompt[:100]}]({image_url})\n\n"
-            markdown_text += f"**提示词**: {prompt}\n\n"
-            markdown_text += f"**图表类型**: {graph_type}\n\n"
-            markdown_text += f"**生成时间**: {total_time:.2f}秒"
+            # Create simplified markdown text with just the image
+            markdown_text = f"![图表]({image_url})"
             
-            # Return DingTalk markdown format with only text field
+            # Return DingTalk markdown format with required title and text fields
             return jsonify({
                 "msgtype": "markdown",
                 "markdown": {
+                    "title": f"MindGraph: {prompt[:50]}...",
                     "text": markdown_text
                 }
             })
