@@ -543,6 +543,45 @@ def get_local_ip():
     except Exception:
         return "127.0.0.1"
 
+def get_wan_ip():
+    """
+    Get the WAN (public) IP address for external access.
+    
+    Returns:
+        str: WAN IP address or None if detection fails
+    """
+    try:
+        import requests
+        # Use multiple services for reliability
+        services = [
+            'https://api.ipify.org',
+            'https://httpbin.org/ip',
+            'https://icanhazip.com'
+        ]
+        
+        for service in services:
+            try:
+                response = requests.get(service, timeout=5)
+                if response.status_code == 200:
+                    ip = response.text.strip()
+                    # Validate IP format
+                    if ip and '.' in ip and ip.count('.') == 3:
+                        logger.info(f"WAN IP detected: {ip} via {service}")
+                        return ip
+            except Exception as e:
+                logger.debug(f"Failed to get WAN IP from {service}: {e}")
+                continue
+        
+        logger.warning("Failed to detect WAN IP from all services")
+        return None
+        
+    except ImportError:
+        logger.warning("requests module not available, cannot detect WAN IP")
+        return None
+    except Exception as e:
+        logger.error(f"Error detecting WAN IP: {e}")
+        return None
+
 def open_browser_debug(host, port):
     """
     Automatically open the debug page in browser with server readiness check.
@@ -609,6 +648,19 @@ def print_banner(host, port):
     # Display application URLs using dynamic server URL
     server_url = config.SERVER_URL
     print(f"🌐 Application URL: {server_url}")
+    
+    # Display IP information
+    lan_ip = get_local_ip()
+    wan_ip = get_wan_ip()
+    
+    print(f"🏠 Local Network (LAN): http://{lan_ip}:{port}")
+    if wan_ip:
+        print(f"🌍 Public Network (WAN): http://{wan_ip}:{port}")
+        print(f"📱 External Access: Available via WAN IP")
+    else:
+        print(f"🌍 Public Network (WAN): Detection failed")
+        print(f"📱 External Access: Limited (set EXTERNAL_HOST in .env)")
+    
     print(f"\n🌐 Open in browser: {server_url}\n")
 
 def print_setup_instructions():

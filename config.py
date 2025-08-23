@@ -145,20 +145,33 @@ class Config:
         if external_host:
             host = external_host
         elif host == '0.0.0.0':
-            # If no external host configured, try to get the actual server IP
-            # This is a fallback - ideally set EXTERNAL_HOST environment variable
+            # If no external host configured, try to get the WAN IP for external access
             try:
-                import socket
-                # Get the actual IP address of the server
-                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                s.connect(("8.8.8.8", 80))
-                actual_ip = s.getsockname()[0]
-                s.close()
-                host = actual_ip
-            except Exception:
+                # Import the WAN IP detection function from app.py
+                import sys
+                import os
+                # Add the current directory to path to import from app.py
+                sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+                from app import get_wan_ip
+                
+                wan_ip = get_wan_ip()
+                if wan_ip:
+                    host = wan_ip
+                    logger.info(f"Using detected WAN IP: {wan_ip} for external access")
+                else:
+                    # Fallback to LAN IP if WAN IP detection fails
+                    import socket
+                    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    s.connect(("8.8.8.8", 80))
+                    lan_ip = s.getsockname()[0]
+                    s.close()
+                    host = lan_ip
+                    logger.warning(f"WAN IP detection failed, using LAN IP: {lan_ip}")
+                    
+            except Exception as e:
                 # If we can't determine IP, we need to fail explicitly
                 # This prevents external clients from getting localhost URLs
-                logger.error("Failed to determine server IP address for external access")
+                logger.error(f"Failed to determine server IP address for external access: {e}")
                 logger.error("Please set EXTERNAL_HOST environment variable with your server's public IP")
                 raise RuntimeError(
                     "Cannot determine server IP address for external access. "

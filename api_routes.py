@@ -81,7 +81,44 @@ def get_comprehensive_timing_stats():
 temp_files = set()
 
 # Track generated images for DingTalk endpoint with timestamps
-dingtalk_images = {}  # {image_path: creation_timestamp}
+# Use file-based storage instead of in-memory dictionary for multi-process compatibility
+dingtalk_images_file = os.path.join(tempfile.gettempdir(), 'dingtalk_images.json')
+
+def load_dingtalk_images():
+    """Load DingTalk images tracking from file."""
+    try:
+        if os.path.exists(dingtalk_images_file):
+            with open(dingtalk_images_file, 'r') as f:
+                return json.load(f)
+        return {}
+    except Exception as e:
+        logger.warning(f"Failed to load DingTalk images tracking: {e}")
+        return {}
+
+def save_dingtalk_images(images_dict):
+    """Save DingTalk images tracking to file."""
+    try:
+        with open(dingtalk_images_file, 'w') as f:
+            json.dump(images_dict, f)
+    except Exception as e:
+        logger.error(f"Failed to save DingTalk images tracking: {e}")
+
+def get_dingtalk_images():
+    """Get current DingTalk images tracking."""
+    return load_dingtalk_images()
+
+def add_dingtalk_image(image_path, creation_time):
+    """Add a new DingTalk image to tracking."""
+    images = get_dingtalk_images()
+    images[image_path] = creation_time
+    save_dingtalk_images(images)
+
+def remove_dingtalk_image(image_path):
+    """Remove a DingTalk image from tracking."""
+    images = get_dingtalk_images()
+    if image_path in images:
+        del images[image_path]
+        save_dingtalk_images(images)
 
 # Import threading for periodic cleanup
 import threading
@@ -96,7 +133,7 @@ def cleanup_temp_files():
             pass
     
     # Clean up DingTalk images
-    for image_path in dingtalk_images:
+    for image_path in get_dingtalk_images():
         try:
             if os.path.exists(image_path):
                 os.unlink(image_path)
@@ -108,7 +145,7 @@ def cleanup_expired_dingtalk_images():
     current_time = time.time()
     expired_images = []
     
-    for image_path, creation_time in dingtalk_images.items():
+    for image_path, creation_time in get_dingtalk_images().items():
         if current_time - creation_time > 24 * 60 * 60:  # 24 hours in seconds
             expired_images.append(image_path)
     
@@ -120,7 +157,7 @@ def cleanup_expired_dingtalk_images():
         except OSError as e:
             logger.warning(f"Failed to clean up expired image {image_path}: {e}")
         finally:
-            dingtalk_images.pop(image_path, None)
+            remove_dingtalk_image(image_path)
     
     # Schedule next cleanup in 24 hours
     timer = threading.Timer(24 * 60 * 60, cleanup_expired_dingtalk_images)
@@ -1085,7 +1122,7 @@ def generate_png():
 @api.route('/generate_dingtalk', methods=['POST'])
 @handle_api_errors
 def generate_dingtalk():
-    """Generate PNG image for DingTalk platform and return markdown format with image URL."""
+    """Generate PNG image for DingTalk platform and return data for integration."""
     # Input validation
     data = request.json
     valid, msg = validate_request_data(data, ['prompt'])
@@ -1703,6 +1740,8 @@ def generate_dingtalk():
                 dir=tempfile.gettempdir()
             )
             
+            logger.info(f"Created temporary file: {temp_path}")
+            
             # Close the file descriptor and reopen for writing
             os.close(temp_fd)
             
@@ -1710,23 +1749,34 @@ def generate_dingtalk():
             with open(temp_path, 'wb') as f:
                 f.write(png_bytes)
             
+            logger.info(f"Saved PNG data ({len(png_bytes)} bytes) to {temp_path}")
+            
             # Track for cleanup with timestamp
-            dingtalk_images[temp_path] = time.time()
+            add_dingtalk_image(temp_path, time.time())
+            logger.info(f"Added to dingtalk_images tracking: {temp_path}")
+            logger.info(f"Current tracked images count: {len(get_dingtalk_images())}")
             
             # Generate a unique filename for the URL (without the full temp path)
             filename = os.path.basename(temp_path)
+            logger.info(f"Generated filename for URL: {filename}")
             
             # Get server URL for image access
             from config import config
             server_url = config.SERVER_URL
             image_url = f"{server_url}/api/temp_images/{filename}"
+            logger.info(f"Generated image URL: {image_url}")
             
-            # Return DingTalk markdown format for image display
+            # Return data for DingTalk integration (not the message format itself)
             return jsonify({
-                "msgtype": "markdown",
-                "markdown": {
-                    "title": f"{prompt}",
-                    "text": f"![]({image_url})"
+                "success": True,
+                "prompt": prompt,
+                "image_url": image_url,
+                "filename": filename,
+                "graph_type": graph_type,
+                "timing": {
+                    "llm_time": llm_time,
+                    "render_time": render_time,
+                    "total_time": total_time
                 }
             })
             
@@ -1831,6 +1881,10 @@ def get_browser_context_pool_stats():
 def serve_temp_dingtalk_image(filename):
     """Serve temporary DingTalk images from the temporary directory."""
     try:
+        logger.info(f"Attempting to serve image: {filename}")
+        dingtalk_images = get_dingtalk_images()
+        logger.info(f"Current dingtalk_images keys: {list(dingtalk_images.keys())}")
+        
         # Find the image in our tracked temporary files
         temp_dir = tempfile.gettempdir()
         image_path = None
@@ -1839,29 +1893,46 @@ def serve_temp_dingtalk_image(filename):
         for tracked_path in dingtalk_images.keys():
             if os.path.basename(tracked_path) == filename:
                 image_path = tracked_path
+                logger.info(f"Found image at: {image_path}")
                 break
         
-        if not image_path or not os.path.exists(image_path):
-            return jsonify({'error': 'Image not found or expired'}), 404
+        if not image_path:
+            logger.error(f"Image {filename} not found in tracked images")
+            return jsonify({'error': 'Image not found in tracked images'}), 404
+        
+        if not os.path.exists(image_path):
+            logger.error(f"Image file {image_path} does not exist on disk")
+            return jsonify({'error': 'Image file not found on disk'}), 404
+        
+        # Check file permissions and size
+        try:
+            stat_info = os.stat(image_path)
+            logger.info(f"Image file stats: size={stat_info.st_size}, permissions={oct(stat_info.st_mode)}")
+        except Exception as e:
+            logger.error(f"Failed to get file stats: {e}")
         
         # Check if the image has expired (older than 24 hours)
         current_time = time.time()
         creation_time = dingtalk_images.get(image_path, 0)
+        age_hours = (current_time - creation_time) / 3600
+        logger.info(f"Image age: {age_hours:.2f} hours")
+        
         if current_time - creation_time > 24 * 60 * 60:  # 24 hours in seconds
             # Remove expired image
             try:
                 os.unlink(image_path)
-                dingtalk_images.pop(image_path, None)
+                remove_dingtalk_image(image_path)
                 logger.info(f"Removed expired image during access: {image_path}")
             except OSError:
                 pass
             return jsonify({'error': 'Image has expired'}), 410  # Gone
         
         # Serve the image file
+        logger.info(f"Serving image file: {image_path}")
         return send_file(image_path, mimetype='image/png')
         
     except Exception as e:
-        logger.error(f"Error serving temporary image {filename}: {e}")
+        logger.error(f"Error serving temporary image {filename}: {e}", exc_info=True)
         return jsonify({'error': 'Failed to serve image'}), 500
 
 @api.route('/clear_cache', methods=['POST'])
@@ -1873,3 +1944,56 @@ def clear_cache():
         return jsonify({"status": "success", "message": "Cache cleared successfully"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500 
+
+@api.route('/debug_dingtalk_images', methods=['GET'])
+def debug_dingtalk_images():
+    """Debug endpoint to check DingTalk image tracking status."""
+    try:
+        dingtalk_images = get_dingtalk_images()
+        temp_dir = tempfile.gettempdir()
+        
+        debug_info = {
+            'tracking_file': dingtalk_images_file,
+            'temp_directory': temp_dir,
+            'tracked_images_count': len(dingtalk_images),
+            'tracked_images': {},
+            'temp_directory_contents': []
+        }
+        
+        # Check each tracked image
+        for image_path, creation_time in dingtalk_images.items():
+            exists = os.path.exists(image_path)
+            if exists:
+                try:
+                    stat_info = os.stat(image_path)
+                    size = stat_info.st_size
+                    permissions = oct(stat_info.st_mode)
+                except Exception as e:
+                    size = "error"
+                    permissions = "error"
+            else:
+                size = "file_not_found"
+                permissions = "file_not_found"
+            
+            debug_info['tracked_images'][image_path] = {
+                'filename': os.path.basename(image_path),
+                'exists': exists,
+                'size': size,
+                'permissions': permissions,
+                'creation_time': creation_time,
+                'age_hours': (time.time() - creation_time) / 3600 if creation_time else 0
+            }
+        
+        # List temp directory contents
+        try:
+            temp_files = os.listdir(temp_dir)
+            png_files = [f for f in temp_files if f.endswith('.png') and 'dingtalk_' in f]
+            debug_info['temp_directory_contents'] = png_files
+        except Exception as e:
+            debug_info['temp_directory_contents'] = f"Error listing directory: {e}"
+        
+        return jsonify(debug_info)
+        
+    except Exception as e:
+        logger.error(f"Error in debug endpoint: {e}", exc_info=True)
+        return jsonify({'error': f'Debug failed: {e}'}), 500
