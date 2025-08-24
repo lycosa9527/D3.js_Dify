@@ -84,6 +84,21 @@ temp_files = set()
 # Use file-based storage instead of in-memory dictionary for multi-process compatibility
 dingtalk_images_file = os.path.join(tempfile.gettempdir(), 'dingtalk_images.json')
 
+def _get_font_base64(font_filename):
+    """Convert font file to base64 for embedding in HTML."""
+    try:
+        font_path = os.path.join(os.path.dirname(__file__), 'static', 'fonts', font_filename)
+        if os.path.exists(font_path):
+            with open(font_path, 'rb') as f:
+                import base64
+                return base64.b64encode(f.read()).decode('utf-8')
+        else:
+            logger.warning(f"Font file not found: {font_path}")
+            return ""
+    except Exception as e:
+        logger.error(f"Failed to load font {font_filename}: {e}")
+        return ""
+
 def load_dingtalk_images():
     """Load DingTalk images tracking from file."""
     try:
@@ -731,6 +746,43 @@ def generate_png():
                     height: 100vh; 
                     display: block; 
                     background: #f0f0f0; 
+                }}
+                
+                /* Inter Font Loading for Ubuntu Server Compatibility */
+                @font-face {{
+                    font-display: swap;
+                    font-family: 'Inter';
+                    font-style: normal;
+                    font-weight: 300;
+                    src: url('data:font/truetype;base64,{_get_font_base64("inter-300.ttf")}') format('truetype');
+                }}
+                @font-face {{
+                    font-display: swap;
+                    font-family: 'Inter';
+                    font-style: normal;
+                    font-weight: 400;
+                    src: url('data:font/truetype;base64,{_get_font_base64("inter-400.ttf")}') format('truetype');
+                }}
+                @font-face {{
+                    font-display: swap;
+                    font-family: 'Inter';
+                    font-style: normal;
+                    font-weight: 500;
+                    src: url('data:font/truetype;base64,{_get_font_base64("inter-500.ttf")}') format('truetype');
+                }}
+                @font-face {{
+                    font-display: swap;
+                    font-family: 'Inter';
+                    font-style: normal;
+                    font-weight: 600;
+                    src: url('data:font/truetype;base64,{_get_font_base64("inter-600.ttf")}') format('truetype');
+                }}
+                @font-face {{
+                    font-display: swap;
+                    font-family: 'Inter';
+                    font-style: normal;
+                    font-weight: 700;
+                    src: url('data:font/truetype;base64,{_get_font_base64("inter-700.ttf")}') format('truetype');
                 }}
             </style>
             </head><body>
@@ -1389,6 +1441,43 @@ def generate_dingtalk():
                     height: 100vh; 
                     display: block; 
                     background: #f0f0f0; 
+                }}
+                
+                /* Inter Font Loading for Ubuntu Server Compatibility */
+                @font-face {{
+                    font-display: swap;
+                    font-family: 'Inter';
+                    font-style: normal;
+                    font-weight: 300;
+                    src: url('data:font/truetype;base64,{_get_font_base64("inter-300.ttf")}') format('truetype');
+                }}
+                @font-face {{
+                    font-display: swap;
+                    font-family: 'Inter';
+                    font-style: normal;
+                    font-weight: 400;
+                    src: url('data:font/truetype;base64,{_get_font_base64("inter-400.ttf")}') format('truetype');
+                }}
+                @font-face {{
+                    font-display: swap;
+                    font-family: 'Inter';
+                    font-style: normal;
+                    font-weight: 500;
+                    src: url('data:font/truetype;base64,{_get_font_base64("inter-500.ttf")}') format('truetype');
+                }}
+                @font-face {{
+                    font-display: swap;
+                    font-family: 'Inter';
+                    font-style: normal;
+                    font-weight: 600;
+                    src: url('data:font/truetype;base64,{_get_font_base64("inter-600.ttf")}') format('truetype');
+                }}
+                @font-face {{
+                    font-display: swap;
+                    font-family: 'Inter';
+                    font-style: normal;
+                    font-weight: 700;
+                    src: url('data:font/truetype;base64,{_get_font_base64("inter-700.ttf")}') format('truetype');
                 }}
             </style>
             </head><body>

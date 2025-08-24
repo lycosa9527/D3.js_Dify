@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.5.3] - 2025-01-27
 
+### 🌐 **UBUNTU SERVER FONT COMPATIBILITY FIXED**
+
+#### Cross-Platform Font Rendering - FULLY RESOLVED ✅
+- **Critical Issue**: Mindmaps showing grey background with no visible text on Ubuntu servers
+- **Root Cause**: Missing font loading in PNG generation HTML templates
+- **Solution Implemented**: Font embedding as base64 data URIs for cross-platform compatibility
+- **Status**: FULLY RESOLVED & PRODUCTION READY
+
+#### Font Compatibility Improvements
+- **Ubuntu Server Support**: Full font compatibility with embedded Inter fonts
+- **Cross-Platform Rendering**: Consistent text display across Windows, macOS, and Ubuntu
+- **Self-Contained Fonts**: No external font dependencies or network requests
+- **Base64 Encoding**: Fonts embedded directly in generated HTML for reliability
+
+#### Technical Architecture
+- **Font Loading Function**: Added `_get_font_base64()` helper for font conversion
+- **HTML Template Updates**: Both PNG generation endpoints now include embedded fonts
+- **Font Weights**: Complete Inter font family (300-700) embedded for all text styles
+- **Memory Impact**: ~2MB HTML size increase (acceptable for PNG generation)
+
+---
+
 ### 🚀 **BROWSER CONTEXT POOLING IMPLEMENTED**
 
 #### Browser Context Pool System - FULLY RESOLVED ✅

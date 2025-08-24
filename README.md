@@ -144,6 +144,7 @@ markdown.setText("@" + userId + "  \n  " + response.getMarkdown());
 MindGraph now uses **Waitress** as the primary WSGI server for both development and production:
 
 - **Cross-platform compatibility**: Works on Windows, macOS, and Linux
+- **Ubuntu Server Support**: Full font compatibility with embedded Inter fonts for consistent rendering
 - **Production-ready**: Handles concurrent requests efficiently
 - **Simple configuration**: Single configuration file (`waitress.conf.py`)
 - **No complex setup**: Just run `python run_server.py`
@@ -344,6 +345,12 @@ const theme = {
 - Check browser console for JavaScript errors
 - Verify D3.js is loading correctly
 
+#### Ubuntu Server Font Issues
+- **Problem**: Mindmaps showing grey background with no text on Ubuntu servers
+- **Solution**: ✅ **FIXED** - Fonts are now embedded as base64 data URIs in generated HTML
+- **Result**: Consistent rendering across Windows, macOS, and Ubuntu environments
+- **Note**: Server restart required after applying font fixes
+
 #### Performance Issues
 - Use minimal installation for production
 - Monitor memory usage for large diagrams
@@ -357,6 +364,7 @@ const theme = {
 ## 📈 Version History
 
 ### Version 2.5.3 (Current)
+- **Ubuntu Server Compatibility**: ✅ **COMPLETED** - Font embedding fix for consistent cross-platform rendering
 - **Browser Context Pooling**: ✅ **COMPLETED** - BrowserContext pool implemented (23% improvement for SVG)
 - **LLM API Performance**: ✅ **COMPLETED** - Dual-model system with 70% performance improvement
 - **Complete Diagram System**: All core diagram types finished and fully optimized
