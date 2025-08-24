@@ -1272,6 +1272,22 @@ def generate_dingtalk():
                 logger.warning(f"FlowMapAgent enhancement skipped: {agent_result.get('error')}")
         except Exception as e:
             logger.error(f"Error enhancing flow_map spec: {e}")
+    elif graph_type == 'mindmap':
+        # Check if spec is already enhanced by agent (has _layout and _recommended_dimensions)
+        if not (isinstance(spec, dict) and spec.get('_layout') and spec.get('_recommended_dimensions')):
+            # Only enhance if not already enhanced
+            try:
+                from mind_map_agent import MindMapAgent
+                m_agent = MindMapAgent()
+                agent_result = m_agent.enhance_spec(spec)
+                if agent_result.get('success') and 'spec' in agent_result:
+                    spec = agent_result['spec']
+                else:
+                    logger.warning(f"MindMapAgent enhancement skipped: {agent_result.get('error')}")
+            except Exception as e:
+                logger.error(f"Error enhancing mindmap spec: {e}")
+        else:
+            logger.info(f"Mind map spec already enhanced, skipping agent call")
     
     # Render SVG and convert to PNG using Playwright
     try:
