@@ -1771,8 +1771,8 @@ def generate_dingtalk():
             image_url = f"{server_url}/api/temp_images/{filename}"
             logger.info(f"Generated image URL: {image_url}")
             
-            # Return just the raw image URL as plain text
-            return image_url
+            # Return plain text in markdown image format: ![](image_url)
+            return f"![]({image_url})"
             
         except Exception as e:
             logger.error(f"Failed to save DingTalk image: {e}")
